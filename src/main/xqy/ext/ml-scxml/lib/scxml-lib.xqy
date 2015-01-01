@@ -6,6 +6,9 @@ import module namespace sem = "http://marklogic.com/semantics" at "/MarkLogic/se
 
 declare namespace sc = "http://www.w3.org/2005/07/scxml";
 
+(:
+Move persistence functions into a separate library? 
+:)
 declare function start($name as xs:string) as xs:string {
   let $sc := find-statechart($name)
   let $initial-state := ($sc/(sc:state|sc:final)[@id = $sc/@initial], $sc/sc:state[1])[1]
@@ -16,11 +19,18 @@ declare function start($name as xs:string) as xs:string {
   }
   let $instance := enter-state($initial-state, $sc, $instance)
   let $instance-id := new-instance-id()
-  let $uri := new-instance-uri($instance-id)
+  let $uri := build-instance-uri($instance-id)
   return (
     xdmp:document-insert($uri, $instance),
     $instance-id
   )
+};
+
+declare function get-instance($id as xs:string) as element(mlsc:instance)?
+{
+  let $uri := build-instance-uri($id)
+  where fn:doc-available($uri)
+  return fn:doc($uri)/mlsc:instance
 };
 
 (:
@@ -81,7 +91,7 @@ declare function enter-state($state, $sc, $instance)
   }
 };
 
-declare function new-instance-uri($instance-id as xs:string) as xs:string
+declare function build-instance-uri($instance-id as xs:string) as xs:string
 {
   "/ml-scxml/instances/" || $instance-id || ".xml"
 };

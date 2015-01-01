@@ -9,7 +9,9 @@ declare function get(
   $params  as map:map
   ) as document-node()*
 {
-  xdmp:log("GET called")
+  document {
+    mlsc:get-instance(map:get($params, "instanceId"))
+  }
 };
 
 declare function post(
