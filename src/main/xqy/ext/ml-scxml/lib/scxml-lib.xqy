@@ -2,9 +2,11 @@ xquery version "1.0-ml";
 
 module namespace mlsc = "http://marklogic.com/scxml";
 
+import module namespace sem = "http://marklogic.com/semantics" at "/MarkLogic/semantics.xqy";
+
 declare namespace sc = "http://www.w3.org/2005/07/scxml";
 
-declare function start($name as xs:string) {
+declare function start($name as xs:string) as xs:string {
   let $sc := find-statechart($name)
   let $initial-state := ($sc/(sc:state|sc:final)[@id = $sc/@initial], $sc/sc:state[1])[1]
   let $instance := element mlsc:instance {
@@ -13,7 +15,12 @@ declare function start($name as xs:string) {
     $sc/sc:datamodel
   }
   let $instance := enter-state($initial-state, $sc, $instance)
-  return $instance  
+  let $instance-id := new-instance-id()
+  let $uri := new-instance-uri($instance-id)
+  return (
+    xdmp:document-insert($uri, $instance),
+    $instance-id
+  )
 };
 
 (:
@@ -72,4 +79,15 @@ declare function enter-state($state, $sc, $instance)
       case element(sc:datamodel) return $datamodel
       default return $kid
   }
+};
+
+declare function new-instance-uri($instance-id as xs:string) as xs:string
+{
+  "/ml-scxml/instances/" || $instance-id || ".xml"
+};
+
+declare function new-instance-id() as xs:string
+{
+  (: TODO Is this callable without the semantics license? :)
+  sem:uuid-string()
 };
