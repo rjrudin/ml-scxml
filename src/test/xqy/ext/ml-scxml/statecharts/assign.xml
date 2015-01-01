@@ -1,0 +1,27 @@
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" initial="hello">
+  <datamodel>
+    <data id="ticket">
+      <price xmlns="">0</price>
+    </data>
+  </datamodel>
+  <state id="first">
+    <transition event="e" cond="x==1" target="s1" />
+    <transition event="e" target="s2" />
+    <transition event="*" target="s3" />
+  </state>
+  <state id="s1">
+    <onentry>
+      <assign location="$ticket/price" expr="'12'" />
+    </onentry>
+  </state>
+  <state id="s2">
+    <onentry>
+      <assign location="$ticket/price" expr="'20'" />
+    </onentry>
+  </state>
+  <state id="s3">
+    <onentry>
+      <assign location="$ticket/price" expr="'30'" />
+    </onentry>
+  </state>
+</scxml>

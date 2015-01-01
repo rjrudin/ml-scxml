@@ -17,7 +17,7 @@ import com.marklogic.test.spring.ModulesPaths;
 
 @ContextConfiguration(classes = { BasicTestConfig.class })
 @TestExecutionListeners(value = { ModulesLoaderTestExecutionListener.class })
-@ModulesPaths(paths = { @ModulesPath(baseDir = "src/main/xqy") })
+@ModulesPaths(paths = { @ModulesPath(baseDir = "src/main/xqy"), @ModulesPath(baseDir = "src/test/xqy") })
 public abstract class AbstractScxmlTest extends AbstractSpringTest {
 
     private static boolean restAssuredInitialized = false;
