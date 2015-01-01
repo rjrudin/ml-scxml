@@ -12,11 +12,14 @@ Move persistence functions into a separate library?
 declare function start($name as xs:string) as xs:string {
   let $sc := find-statechart($name)
   let $initial-state := ($sc/(sc:state|sc:final)[@id = $sc/@initial], $sc/sc:state[1])[1]
+  
+  (: TODO Should we store the instanceId on this? :)
   let $instance := element mlsc:instance {
     attribute createdDateTime {fn:current-dateTime()},
     element mlsc:state {fn:string($initial-state/@id)},
     $sc/sc:datamodel
   }
+  
   let $instance := enter-state($initial-state, $sc, $instance)
   let $instance-id := new-instance-id()
   let $uri := build-instance-uri($instance-id)

@@ -5,7 +5,7 @@ import org.junit.Test;
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.Response;
 import com.marklogic.scxml.AbstractScxmlTest;
-import com.marklogic.test.jdom.Fragment;
+import com.marklogic.scxml.Instance;
 
 public class AssignTest extends AbstractScxmlTest {
 
@@ -14,8 +14,9 @@ public class AssignTest extends AbstractScxmlTest {
         Response r = RestAssured.post("/v1/resources/scxml?rs:statechartId=assign");
         String instanceId = r.jsonPath().getString("instanceId");
 
-        r = RestAssured.get("/v1/resources/scxml?rs:instanceId=" + instanceId);
-        Fragment instance = parse(r.asString());
-        instance.prettyPrint();
+        Instance i = loadInstance(instanceId);
+        i.assertState("first");
+        i.assertDatamodelElementExists("ticket", "price[. = '0']");
+        i.prettyPrint();
     }
 }

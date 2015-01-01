@@ -7,6 +7,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestExecutionListeners;
 
 import com.jayway.restassured.RestAssured;
+import com.jayway.restassured.response.Response;
 import com.marklogic.client.helper.DatabaseClientConfig;
 import com.marklogic.test.jdom.NamespaceProvider;
 import com.marklogic.test.spring.AbstractSpringTest;
@@ -42,5 +43,10 @@ public abstract class AbstractScxmlTest extends AbstractSpringTest {
     @Override
     protected NamespaceProvider getNamespaceProvider() {
         return new ScxmlNamespaceProvider();
+    }
+
+    protected Instance loadInstance(String instanceId) {
+        Response r = RestAssured.get("/v1/resources/scxml?rs:instanceId=" + instanceId);
+        return new Instance(parse(r.asString()));
     }
 }
