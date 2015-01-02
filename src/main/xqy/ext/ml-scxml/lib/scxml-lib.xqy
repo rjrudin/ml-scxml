@@ -1,53 +1,43 @@
 xquery version "1.0-ml";
 
-module namespace mlsc = "http://marklogic.com/scxml";
+(:
+This library is intended to not perform any persistence operations; it just implements SCXML functionality.
+:)
 
-import module namespace sem = "http://marklogic.com/semantics" at "/MarkLogic/semantics.xqy";
+module namespace mlsc = "http://marklogic.com/scxml";
 
 declare namespace sc = "http://www.w3.org/2005/07/scxml";
 
-(:
-Move persistence functions into a separate library? 
-:)
-declare function start($statechart-id as xs:string) as xs:string {
-  let $sc := find-statechart($statechart-id)
+declare function start(
+  $machine-id as xs:string,
+  $sc as element(sc:scxml),
+  $instance-id as xs:string
+  ) as element(mlsc:instance)
+{
   let $initial-state := ($sc/(sc:state|sc:final)[@id = $sc/@initial], $sc/sc:state[1])[1]
   
-  let $instance-id := new-instance-id()
-
   let $instance := element mlsc:instance {
     attribute created-date-time {fn:current-dateTime()},
-    element mlsc:statechart-id {$statechart-id},
+    element mlsc:statechart-id {$machine-id},
     element mlsc:instance-id {$instance-id},
     element mlsc:state {fn:string($initial-state/@id)},
     $sc/sc:datamodel
   }
   
-  let $instance := enter-state($initial-state, $sc, $instance)
-  let $uri := build-instance-uri($instance-id)
-  return (
-    xdmp:document-insert($uri, $instance),
-    $instance-id
-  )
+  return enter-state($initial-state, $sc, $instance)
 };
 
 declare function trigger-event(
-  $instance-id as xs:string,
+  $instance as element(mlsc:instance),
+  $sc as element(sc:scxml),
   $event as xs:string
   ) as element(mlsc:instance)
 {
-  let $instance := get-instance($instance-id)
-  let $sc := find-statechart(get-statechart-id($instance))
   let $state := $sc/sc:state[@id = $instance/mlsc:state/fn:string()]
-  let $_ := xdmp:log($state)
   (: TODO Lots of matching logic to add here :)
   let $transition := $state/sc:transition[@event = $event][1]
-  let $_ := xdmp:log($transition)
   let $new-state := $sc/sc:state[@id = $transition/@target][1]
-  let $_ := xdmp:log($new-state)
-  let $new-instance := enter-state($new-state, $sc, $instance)
-  let $_ := xdmp:node-replace($instance, $new-instance)
-  return $new-instance
+  return enter-state($new-state, $sc, $instance)
 };
 
 declare function enter-state(
@@ -93,41 +83,6 @@ declare function enter-state(
       case element(sc:datamodel) return $datamodel
       default return $kid
   }
-};
-
-declare function get-instance($id as xs:string) as element(mlsc:instance)?
-{
-  let $uri := build-instance-uri($id)
-  where fn:doc-available($uri)
-  return fn:doc($uri)/mlsc:instance
-};
-
-(:
-TODO Will want this to be overrideable, in terms of where the statechart is expected to be.
-:)
-declare function find-statechart($statechart-id as xs:string) as element(sc:scxml)
-{
-  xdmp:eval("
-    xquery version '1.0-ml';
-    declare variable $statechart-id as xs:string external;
-    let $uri := fn:concat('/ext/ml-scxml/statecharts/' || $statechart-id || '.xml')
-    return fn:doc($uri)",
-    (xs:QName("statechart-id"), $statechart-id),
-    <options xmlns="xdmp:eval">
-      <database>{xdmp:modules-database()}</database>
-    </options>
-  )/sc:scxml
-};
-
-declare function build-instance-uri($instance-id as xs:string) as xs:string
-{
-  "/ml-scxml/instances/" || $instance-id || ".xml"
-};
-
-declare function new-instance-id() as xs:string
-{
-  (: TODO Is this callable without the semantics license? :)
-  sem:uuid-string()
 };
 
 declare function get-instance-id($instance as element(mlsc:instance)) as xs:string
