@@ -49,8 +49,8 @@ public abstract class AbstractScxmlTest extends AbstractSpringTest {
         return new ScxmlNamespaceProvider();
     }
 
-    protected String startStatechartWithId(String statechartId) {
-        Response r = postToService("rs:statechartId=" + statechartId);
+    protected String startMachineWithId(String machineId) {
+        Response r = postToService("rs:machineId=" + machineId);
         assertEquals(200, r.getStatusCode());
         assertEquals("application/json", r.getContentType());
         return r.jsonPath().getString("instanceId");

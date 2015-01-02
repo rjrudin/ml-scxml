@@ -21,29 +21,30 @@ declare function post(
   $input   as document-node()*
   ) as document-node()*
 {
-  let $sc-name := map:get($params, "statechartId")
+  let $instance-id := map:get($params, "instanceId")
   return
-    if ($sc-name) then 
-      document {
-        xdmp:to-json(
-          let $o := json:object()
-          return (
-            map:put($o, "instanceId", mlsc:start($sc-name)),
-            $o,
-            xdmp:set-response-content-type("application/json")
-          )
-        )
-      }
+    if ($instance-id) then 
+      instance-to-json(
+        mlsc:trigger-event($instance-id, map:get($params, "event"))
+      )
     else
-      let $instance := mlsc:trigger-event(map:get($params, "instanceId"), map:get($params, "event"))
-      return document {
-        xdmp:to-json(
-          let $o := json:object()
-          return (
-            map:put($o, "instanceId", mlsc:get-instance-id($instance)),
-            map:put($o, "state", mlsc:get-state($instance)),
-            $o
-          )
-        )
-      }
+      instance-to-json(
+        mlsc:start(map:get($params, "machineId"))
+        
+      )
+};
+
+declare private function instance-to-json($instance as element(mlsc:instance)) as document-node()
+{
+  document {
+    xdmp:to-json(
+      let $o := json:object()
+      return (
+        map:put($o, "instanceId", mlsc:get-instance-id($instance)),
+        map:put($o, "state", mlsc:get-state($instance)),
+        $o,
+        xdmp:set-response-content-type("application/json")
+      )
+    )
+  }
 };

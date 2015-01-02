@@ -10,39 +10,39 @@ declare namespace sc = "http://www.w3.org/2005/07/scxml";
 
 declare function start(
   $machine-id as xs:string,
-  $sc as element(sc:scxml),
+  $machine as element(sc:scxml),
   $instance-id as xs:string
   ) as element(mlsc:instance)
 {
-  let $initial-state := ($sc/(sc:state|sc:final)[@id = $sc/@initial], $sc/sc:state[1])[1]
+  let $initial-state := ($machine/(sc:state|sc:final)[@id = $machine/@initial], $machine/sc:state[1])[1]
   
   let $instance := element mlsc:instance {
     attribute created-date-time {fn:current-dateTime()},
-    element mlsc:statechart-id {$machine-id},
+    element mlsc:machine-id {$machine-id},
     element mlsc:instance-id {$instance-id},
     element mlsc:state {fn:string($initial-state/@id)},
-    $sc/sc:datamodel
+    $machine/sc:datamodel
   }
   
-  return enter-state($initial-state, $sc, $instance)
+  return enter-state($initial-state, $machine, $instance)
 };
 
 declare function trigger-event(
   $instance as element(mlsc:instance),
-  $sc as element(sc:scxml),
+  $machine as element(sc:scxml),
   $event as xs:string
   ) as element(mlsc:instance)
 {
-  let $state := $sc/sc:state[@id = $instance/mlsc:state/fn:string()]
+  let $state := $machine/sc:state[@id = $instance/mlsc:state/fn:string()]
   (: TODO Lots of matching logic to add here :)
   let $transition := $state/sc:transition[@event = $event][1]
-  let $new-state := $sc/sc:state[@id = $transition/@target][1]
-  return enter-state($new-state, $sc, $instance)
+  let $new-state := $machine/sc:state[@id = $transition/@target][1]
+  return enter-state($new-state, $machine, $instance)
 };
 
 declare function enter-state(
   $state as element(sc:state), 
-  $sc as element(sc:scxml), 
+  $machine as element(sc:scxml), 
   $instance as element(mlsc:instance)
   ) as element(mlsc:instance)
 {
@@ -90,9 +90,9 @@ declare function get-instance-id($instance as element(mlsc:instance)) as xs:stri
   $instance/mlsc:instance-id/fn:string()
 };
 
-declare function get-statechart-id($instance as element(mlsc:instance)) as xs:string
+declare function get-machine-id($instance as element(mlsc:instance)) as xs:string
 {
-  $instance/mlsc:statechart-id/fn:string()
+  $instance/mlsc:machine-id/fn:string()
 };
 
 declare function get-state($instance as element(mlsc:instance)) as xs:string

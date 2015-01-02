@@ -12,29 +12,38 @@ import module namespace sem = "http://marklogic.com/semantics" at "/MarkLogic/se
 
 declare namespace sc = "http://www.w3.org/2005/07/scxml";
 
-declare function start($statechart-id as xs:string) as xs:string {
-  let $statechart := find-statechart($statechart-id)
+(:
+Start a new instance of the machine with the given ID. Returns the new instance.
+:)
+declare function start($machine-id as xs:string) as element(mlsc:instance) {
+  let $machine := find-machine($machine-id)
   let $instance-id := new-instance-id()
-  let $instance := mlsc:start($statechart-id, $statechart, $instance-id)
+  let $instance := mlsc:start($machine-id, $machine, $instance-id)
   let $uri := build-instance-uri($instance-id)
   return (
     xdmp:document-insert($uri, $instance),
-    $instance-id
+    $instance
   )
 };
 
+(:
+Trigger the given event on the instance with the given ID. Returns the updated instance.
+:)
 declare function trigger-event(
   $instance-id as xs:string,
   $event as xs:string
   ) as element(mlsc:instance)
 {
   let $instance := get-instance($instance-id)
-  let $statechart := find-statechart(get-statechart-id($instance))
-  let $new-instance := mlsc:trigger-event($instance, $statechart, $event)
+  let $machine := find-machine(get-machine-id($instance))
+  let $new-instance := mlsc:trigger-event($instance, $machine, $event)
   let $_ := xdmp:node-replace($instance, $new-instance)
   return $new-instance
 };
 
+(:
+Get the instance with the given ID.
+:)
 declare function get-instance($id as xs:string) as element(mlsc:instance)?
 {
   let $uri := build-instance-uri($id)
@@ -43,16 +52,16 @@ declare function get-instance($id as xs:string) as element(mlsc:instance)?
 };
 
 (:
-TODO Will want this to be overrideable, in terms of where the statechart is expected to be.
+TODO Will want this to be overrideable, in terms of where the machine is expected to be.
 :)
-declare function find-statechart($statechart-id as xs:string) as element(sc:scxml)
+declare function find-machine($machine-id as xs:string) as element(sc:scxml)
 {
   xdmp:eval("
     xquery version '1.0-ml';
-    declare variable $statechart-id as xs:string external;
-    let $uri := fn:concat('/ext/ml-scxml/statecharts/' || $statechart-id || '.xml')
+    declare variable $machine-id as xs:string external;
+    let $uri := fn:concat('/ext/ml-scxml/machines/' || $machine-id || '.xml')
     return fn:doc($uri)",
-    (xs:QName("statechart-id"), $statechart-id),
+    (xs:QName("machine-id"), $machine-id),
     <options xmlns="xdmp:eval">
       <database>{xdmp:modules-database()}</database>
     </options>

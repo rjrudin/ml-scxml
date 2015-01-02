@@ -11,10 +11,10 @@ public class AssignTest extends AbstractScxmlTest {
 
     @Test
     public void test() {
-        String instanceId = startStatechartWithId("assign");
+        String instanceId = startMachineWithId("assign");
 
         Instance i = loadInstance(instanceId);
-        i.assertStatechartId("assign");
+        i.assertmachineId("assign");
         i.assertInstanceId(instanceId);
         i.assertState("first");
         i.assertDatamodelElementExists("ticket", "price[. = '0']");
