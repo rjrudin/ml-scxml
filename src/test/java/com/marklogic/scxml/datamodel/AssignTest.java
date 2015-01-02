@@ -12,6 +12,8 @@ public class AssignTest extends AbstractScxmlTest {
     @Test
     public void test() {
         Response r = RestAssured.post("/v1/resources/scxml?rs:statechartId=assign");
+        assertEquals(200, r.getStatusCode());
+        assertEquals("application/json", r.getContentType());
         String instanceId = r.jsonPath().getString("instanceId");
 
         Instance i = loadInstance(instanceId);

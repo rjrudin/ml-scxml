@@ -47,6 +47,8 @@ public abstract class AbstractScxmlTest extends AbstractSpringTest {
 
     protected Instance loadInstance(String instanceId) {
         Response r = RestAssured.get("/v1/resources/scxml?rs:instanceId=" + instanceId);
+        assertEquals(200, r.getStatusCode());
+        assertEquals("application/xml", r.getContentType());
         return new Instance(parse(r.asString()));
     }
 }

@@ -10,7 +10,8 @@ declare function get(
   ) as document-node()*
 {
   document {
-    mlsc:get-instance(map:get($params, "instanceId"))
+    mlsc:get-instance(map:get($params, "instanceId")),
+    xdmp:set-response-content-type("application/xml")
   }
 };
 
@@ -27,7 +28,8 @@ declare function post(
       let $o := json:object()
       return (
         map:put($o, "instanceId", $instance-id),
-        $o
+        $o,
+        xdmp:set-response-content-type("application/json")
       )
     )
   }
