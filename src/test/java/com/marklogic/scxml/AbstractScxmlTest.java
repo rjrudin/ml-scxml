@@ -1,6 +1,8 @@
 package com.marklogic.scxml;
 
 import static com.jayway.restassured.RestAssured.basic;
+import static com.jayway.restassured.RestAssured.get;
+import static com.jayway.restassured.RestAssured.post;
 
 import org.junit.Before;
 import org.springframework.test.context.ContextConfiguration;
@@ -20,6 +22,8 @@ import com.marklogic.test.spring.ModulesPaths;
 @TestExecutionListeners(value = { ModulesLoaderTestExecutionListener.class })
 @ModulesPaths(paths = { @ModulesPath(baseDir = "src/main/xqy"), @ModulesPath(baseDir = "src/test/xqy") })
 public abstract class AbstractScxmlTest extends AbstractSpringTest {
+
+    protected final static String SERVICE_PATH = "/v1/resources/scxml";
 
     private static boolean restAssuredInitialized = false;
 
@@ -45,8 +49,19 @@ public abstract class AbstractScxmlTest extends AbstractSpringTest {
         return new ScxmlNamespaceProvider();
     }
 
+    protected String startStatechartWithId(String statechartId) {
+        Response r = postToService("rs:statechartId=" + statechartId);
+        assertEquals(200, r.getStatusCode());
+        assertEquals("application/json", r.getContentType());
+        return r.jsonPath().getString("instanceId");
+    }
+
+    protected Response postToService(String querystring) {
+        return post(SERVICE_PATH + "?" + querystring);
+    }
+
     protected Instance loadInstance(String instanceId) {
-        Response r = RestAssured.get("/v1/resources/scxml?rs:instanceId=" + instanceId);
+        Response r = get(SERVICE_PATH + "?rs:instanceId=" + instanceId);
         assertEquals(200, r.getStatusCode());
         assertEquals("application/xml", r.getContentType());
         return new Instance(parse(r.asString()));

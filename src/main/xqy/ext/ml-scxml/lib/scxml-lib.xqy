@@ -9,19 +9,21 @@ declare namespace sc = "http://www.w3.org/2005/07/scxml";
 (:
 Move persistence functions into a separate library? 
 :)
-declare function start($name as xs:string) as xs:string {
-  let $sc := find-statechart($name)
+declare function start($statechart-id as xs:string) as xs:string {
+  let $sc := find-statechart($statechart-id)
   let $initial-state := ($sc/(sc:state|sc:final)[@id = $sc/@initial], $sc/sc:state[1])[1]
   
-  (: TODO Should we store the instanceId on this? :)
+  let $instance-id := new-instance-id()
+
   let $instance := element mlsc:instance {
-    attribute createdDateTime {fn:current-dateTime()},
+    attribute created-date-time {fn:current-dateTime()},
+    element mlsc:statechart-id {$statechart-id},
+    element mlsc:instance-id {$instance-id},
     element mlsc:state {fn:string($initial-state/@id)},
     $sc/sc:datamodel
   }
   
   let $instance := enter-state($initial-state, $sc, $instance)
-  let $instance-id := new-instance-id()
   let $uri := build-instance-uri($instance-id)
   return (
     xdmp:document-insert($uri, $instance),
@@ -29,31 +31,30 @@ declare function start($name as xs:string) as xs:string {
   )
 };
 
-declare function get-instance($id as xs:string) as element(mlsc:instance)?
+declare function trigger-event(
+  $instance-id as xs:string,
+  $event as xs:string
+  ) as element(mlsc:instance)
 {
-  let $uri := build-instance-uri($id)
-  where fn:doc-available($uri)
-  return fn:doc($uri)/mlsc:instance
+  let $instance := get-instance($instance-id)
+  let $sc := find-statechart(get-statechart-id($instance))
+  let $state := $sc/sc:state[@id = $instance/mlsc:state/fn:string()]
+  let $_ := xdmp:log($state)
+  (: TODO Lots of matching logic to add here :)
+  let $transition := $state/sc:transition[@event = $event][1]
+  let $_ := xdmp:log($transition)
+  let $new-state := $sc/sc:state[@id = $transition/@target][1]
+  let $_ := xdmp:log($new-state)
+  let $new-instance := enter-state($new-state, $sc, $instance)
+  let $_ := xdmp:node-replace($instance, $new-instance)
+  return $new-instance
 };
 
-(:
-TODO Will want this to be overrideable, in terms of where the statechart is expected to be.
-:)
-declare function find-statechart($name as xs:string) as element(sc:scxml)
-{
-  xdmp:eval("
-    xquery version '1.0-ml';
-    declare variable $NAME as xs:string external;
-    let $uri := fn:concat('/ext/ml-scxml/statecharts/' || $NAME || '.xml')
-    return fn:doc($uri)",
-    (xs:QName("NAME"), $name),
-    <options xmlns="xdmp:eval">
-      <database>{xdmp:modules-database()}</database>
-    </options>
-  )/sc:scxml
-};
-
-declare function enter-state($state, $sc, $instance)
+declare function enter-state(
+  $state as element(sc:state), 
+  $sc as element(sc:scxml), 
+  $instance as element(mlsc:instance)
+  ) as element(mlsc:instance)
 {
   let $datamodel := $instance/sc:datamodel
   let $_ := 
@@ -94,6 +95,30 @@ declare function enter-state($state, $sc, $instance)
   }
 };
 
+declare function get-instance($id as xs:string) as element(mlsc:instance)?
+{
+  let $uri := build-instance-uri($id)
+  where fn:doc-available($uri)
+  return fn:doc($uri)/mlsc:instance
+};
+
+(:
+TODO Will want this to be overrideable, in terms of where the statechart is expected to be.
+:)
+declare function find-statechart($statechart-id as xs:string) as element(sc:scxml)
+{
+  xdmp:eval("
+    xquery version '1.0-ml';
+    declare variable $statechart-id as xs:string external;
+    let $uri := fn:concat('/ext/ml-scxml/statecharts/' || $statechart-id || '.xml')
+    return fn:doc($uri)",
+    (xs:QName("statechart-id"), $statechart-id),
+    <options xmlns="xdmp:eval">
+      <database>{xdmp:modules-database()}</database>
+    </options>
+  )/sc:scxml
+};
+
 declare function build-instance-uri($instance-id as xs:string) as xs:string
 {
   "/ml-scxml/instances/" || $instance-id || ".xml"
@@ -103,4 +128,19 @@ declare function new-instance-id() as xs:string
 {
   (: TODO Is this callable without the semantics license? :)
   sem:uuid-string()
+};
+
+declare function get-instance-id($instance as element(mlsc:instance)) as xs:string
+{
+  $instance/mlsc:instance-id/fn:string()
+};
+
+declare function get-statechart-id($instance as element(mlsc:instance)) as xs:string
+{
+  $instance/mlsc:statechart-id/fn:string()
+};
+
+declare function get-state($instance as element(mlsc:instance)) as xs:string
+{
+  $instance/mlsc:state/fn:string()
 };

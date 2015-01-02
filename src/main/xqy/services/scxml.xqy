@@ -22,15 +22,28 @@ declare function post(
   ) as document-node()*
 {
   let $sc-name := map:get($params, "statechartId")
-  let $instance-id := mlsc:start($sc-name)
-  return document {
-    xdmp:to-json(
-      let $o := json:object()
-      return (
-        map:put($o, "instanceId", $instance-id),
-        $o,
-        xdmp:set-response-content-type("application/json")
-      )
-    )
-  }
+  return
+    if ($sc-name) then 
+      document {
+        xdmp:to-json(
+          let $o := json:object()
+          return (
+            map:put($o, "instanceId", mlsc:start($sc-name)),
+            $o,
+            xdmp:set-response-content-type("application/json")
+          )
+        )
+      }
+    else
+      let $instance := mlsc:trigger-event(map:get($params, "instanceId"), map:get($params, "event"))
+      return document {
+        xdmp:to-json(
+          let $o := json:object()
+          return (
+            map:put($o, "instanceId", mlsc:get-instance-id($instance)),
+            map:put($o, "state", mlsc:get-state($instance)),
+            $o
+          )
+        )
+      }
 };
