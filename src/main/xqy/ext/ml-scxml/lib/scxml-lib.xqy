@@ -39,13 +39,18 @@ declare function trigger-event(
   let $state := $machine/sc:state[@id = $instance/mlsc:state/fn:string()]
   (: TODO Lots of matching logic to add here :)
   let $transition := $state/sc:transition[@event = $event][1]
-  let $new-state := $machine/sc:state[@id = $transition/@target][1]
-  return enter-state($new-state, $machine, $instance)
+  let $target := fn:string($transition/@target)
+  let $new-state := ($machine/sc:state[@id = $target], $machine/sc:final[@id = $target])[1]
+  return
+    if ($new-state) then 
+      enter-state($new-state, $machine, $instance)
+    else
+      fn:error(xs:QName("MISSING-STATE"), "Could not find state '" || $target || "' to transition to")
 };
 
 
 declare function enter-state(
-  $new-state as element(sc:state), 
+  $new-state as element(), 
   $machine as element(sc:scxml), 
   $instance as element(mlsc:instance)
   ) as element(mlsc:instance)
@@ -69,7 +74,7 @@ declare function enter-state(
       case element(sc:datamodel) return $datamodel
       case element(mlsc:transitions) return 
         element mlsc:transitions {
-          $kid/@*,
+          $kid/*,
           $transition
         }
       default return $kid,

@@ -14,7 +14,7 @@ declare namespace sc = "http://www.w3.org/2005/07/scxml";
 declare function build-transition(
   $instance as element(mlsc:instance),
   $machine as element(sc:scxml),
-  $new-state as element(sc:state)
+  $new-state as element()
   ) as element(mlsc:transition)
 {
   (: Using attributes for states here, as I don't think we'd want them to hit on free text searches :)

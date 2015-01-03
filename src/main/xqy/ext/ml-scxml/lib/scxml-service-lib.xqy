@@ -46,13 +46,17 @@ declare function trigger-event(
 
 
 (:
-Get the instance with the given ID.
+Get the instance with the given ID. In the future, may have an overloaded function that allows for the instance to be
+missing, but for now, we always expect to get something back.
 :)
-declare function get-instance($id as xs:string) as element(mlsc:instance)?
+declare function get-instance($id as xs:string) as element(mlsc:instance)
 {
   let $uri := build-instance-uri($id)
-  where fn:doc-available($uri)
-  return fn:doc($uri)/mlsc:instance
+  return
+    if (fn:doc-available($uri)) then 
+      fn:doc($uri)/mlsc:instance
+    else
+      fn:error(xs:QName("MISSING-INSTANCE"), "Could not find an instance with ID: " || $id)
 };
 
 
