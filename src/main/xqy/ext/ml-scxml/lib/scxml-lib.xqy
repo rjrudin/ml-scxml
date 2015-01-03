@@ -56,13 +56,33 @@ declare function enter-state(
       case element(sc:assign) return xdmp:set($datamodel, execute-assign($el, $datamodel))
       default return ()
 
+  let $new-state-id := fn:string($state/@id)
+  
+  (: Using attributes for states here, as I don't think we'd want them to hit on free text searches :)
+  (: TODO Unique QName based on "to" state, or stick with generic QName? :)
+  let $new-transition := 
+    <mlsc:transition date-time="{fn:current-dateTime()}">
+      <mlsc:from state="{get-state($instance)}"/>
+      <mlsc:to state="{$new-state-id}"/>
+    </mlsc:transition>
+    
   return element {fn:node-name($instance)} {
     $instance/@*,
+    
     for $kid in $instance/element()
     return typeswitch($kid)
-      case element(mlsc:state) return element mlsc:state {$state/@id/fn:string()}
+      case element(mlsc:state) return element mlsc:state {$new-state-id}
       case element(sc:datamodel) return $datamodel
-      default return $kid
+      case element(mlsc:transitions) return 
+        element mlsc:transitions {
+          $kid/@*,
+          $new-transition
+        }
+      default return $kid,
+      
+    if (fn:not($instance/mlsc:transitions)) then 
+      element mlsc:transitions {$new-transition}
+    else ()
   }
 };
 

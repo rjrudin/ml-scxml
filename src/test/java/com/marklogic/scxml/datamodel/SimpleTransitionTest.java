@@ -8,6 +8,10 @@ import com.marklogic.scxml.Instance;
 
 public class SimpleTransitionTest extends AbstractScxmlTest {
 
+    /**
+     * TODO We'll want to capture the current user at some point. Should have an extension point for building a
+     * transition.
+     */
     @Test
     public void twoSimpleTransitions() {
         final String machineId = "two-simple-transitions";
@@ -21,6 +25,9 @@ public class SimpleTransitionTest extends AbstractScxmlTest {
         triggerEvent(id, "Start");
         i = loadInstance(id);
         i.assertState("In Progress");
+        i.assertElementExists("/mlsc:instance/mlsc:transitions/mlsc:transition"
+                + "[mlsc:from/@state = 'Open' and mlsc:to/@state = 'In Progress' and @date-time != '']");
+        i.prettyPrint();
     }
 
     @Test
