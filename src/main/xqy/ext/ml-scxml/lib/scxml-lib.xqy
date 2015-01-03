@@ -6,6 +6,8 @@ This library is intended to not perform any persistence operations; it just impl
 
 module namespace mlsc = "http://marklogic.com/scxml";
 
+import module namespace mlscxp = "http://marklogic.com/scxml/extension-points" at "/ext/ml-scxml/extension-points/build-transition.xqy";
+
 declare namespace sc = "http://www.w3.org/2005/07/scxml";
 
 declare function start(
@@ -43,45 +45,37 @@ declare function trigger-event(
 
 
 declare function enter-state(
-  $state as element(sc:state), 
+  $new-state as element(sc:state), 
   $machine as element(sc:scxml), 
   $instance as element(mlsc:instance)
   ) as element(mlsc:instance)
 {
   let $datamodel := $instance/sc:datamodel
   let $_ := 
-    for $el in $state/sc:onentry/element()
+    for $el in $new-state/sc:onentry/element()
     return typeswitch ($el)
       case element(sc:log) return xdmp:log(xdmp:eval($el/@expr))
       case element(sc:assign) return xdmp:set($datamodel, execute-assign($el, $datamodel))
       default return ()
 
-  let $new-state-id := fn:string($state/@id)
-  
-  (: Using attributes for states here, as I don't think we'd want them to hit on free text searches :)
-  (: TODO Unique QName based on "to" state, or stick with generic QName? :)
-  let $new-transition := 
-    <mlsc:transition date-time="{fn:current-dateTime()}">
-      <mlsc:from state="{get-state($instance)}"/>
-      <mlsc:to state="{$new-state-id}"/>
-    </mlsc:transition>
+  let $transition := mlscxp:build-transition($instance, $machine, $new-state) 
     
   return element {fn:node-name($instance)} {
     $instance/@*,
     
     for $kid in $instance/element()
     return typeswitch($kid)
-      case element(mlsc:state) return element mlsc:state {$new-state-id}
+      case element(mlsc:state) return element mlsc:state {fn:string($new-state/@id)}
       case element(sc:datamodel) return $datamodel
       case element(mlsc:transitions) return 
         element mlsc:transitions {
           $kid/@*,
-          $new-transition
+          $transition
         }
       default return $kid,
       
     if (fn:not($instance/mlsc:transitions)) then 
-      element mlsc:transitions {$new-transition}
+      element mlsc:transitions {$transition}
     else ()
   }
 };
