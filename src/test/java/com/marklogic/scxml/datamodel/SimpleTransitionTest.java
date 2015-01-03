@@ -25,8 +25,7 @@ public class SimpleTransitionTest extends AbstractScxmlTest {
         triggerEvent(id, "Start");
         i = loadInstance(id);
         i.assertState("In Progress");
-        i.assertElementExists("/mlsc:instance/mlsc:transitions/mlsc:transition"
-                + "[mlsc:from/@state = 'Open' and mlsc:to/@state = 'In Progress' and @date-time != '']");
+        i.assertTransitionExists("Open", "In Progress");
         i.prettyPrint();
     }
 
