@@ -8,7 +8,7 @@ public class Instance extends Fragment {
         super(other);
     }
 
-    public void assertmachineId(String machineId) {
+    public void assertMachineId(String machineId) {
         assertElementValue("/mlsc:instance/mlsc:machine-id", machineId);
     }
 

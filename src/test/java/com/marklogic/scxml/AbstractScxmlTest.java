@@ -51,18 +51,23 @@ public abstract class AbstractScxmlTest extends AbstractSpringTest {
 
     protected String startMachineWithId(String machineId) {
         Response r = postToService("rs:machineId=" + machineId);
-        try {
-            assertEquals(200, r.getStatusCode());
-        } catch (AssertionError ae) {
-            logger.error(r.asString());
-            throw ae;
-        }
         assertEquals("application/json", r.getContentType());
         return r.jsonPath().getString("instanceId");
     }
 
+    protected Response triggerEvent(String instanceId, String event) {
+        return postToService(format("rs:instanceId=%s&rs:event=%s", instanceId, event));
+    }
+
     protected Response postToService(String querystring) {
-        return post(SERVICE_PATH + "?" + querystring);
+        Response r = post(SERVICE_PATH + "?" + querystring);
+        try {
+            assertEquals(200, r.getStatusCode());
+            return r;
+        } catch (AssertionError ae) {
+            logger.error(r.asString());
+            throw ae;
+        }
     }
 
     protected Instance loadInstance(String instanceId) {

@@ -10,17 +10,16 @@ import com.marklogic.scxml.Instance;
 public class AssignTest extends AbstractScxmlTest {
 
     @Test
-    public void test() {
+    public void executeAssignmentOnStateEntry() {
         String instanceId = startMachineWithId("assign");
 
         Instance i = loadInstance(instanceId);
-        i.assertmachineId("assign");
+        i.assertMachineId("assign");
         i.assertInstanceId(instanceId);
         i.assertState("first");
         i.assertDatamodelElementExists("ticket", "price[. = '0']");
 
-        Response r = postToService("rs:instanceId=" + instanceId + "&rs:event=e");
-        assertEquals(200, r.getStatusCode());
+        Response r = triggerEvent(instanceId, "e");
         JsonPath json = r.jsonPath();
         assertEquals(instanceId, json.getString("instanceId"));
         assertEquals("s1", json.getString("state"));
