@@ -27,6 +27,7 @@ public class AssignTest extends AbstractScxmlTest {
 
         i = loadInstance(instanceId);
         i.assertState("s1");
-        i.assertDatamodelElementExists("ticket", "price[. = '12']");
+        i.assertDatamodelElementExists("ticket", "price[. = '10']");
+        i.prettyPrint();
     }
 }

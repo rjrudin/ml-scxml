@@ -27,6 +27,7 @@ declare function start(
   return enter-state($initial-state, $machine, $instance)
 };
 
+
 declare function trigger-event(
   $instance as element(mlsc:instance),
   $machine as element(sc:scxml),
@@ -40,6 +41,7 @@ declare function trigger-event(
   return enter-state($new-state, $machine, $instance)
 };
 
+
 declare function enter-state(
   $state as element(sc:state), 
   $machine as element(sc:scxml), 
@@ -51,28 +53,7 @@ declare function enter-state(
     for $el in $state/sc:onentry/element()
     return typeswitch ($el)
       case element(sc:log) return xdmp:log(xdmp:eval($el/@expr))
-      case element(sc:assign) return
-
-        let $location := $el/@location/fn:string()
-        let $var := fn:substring(fn:tokenize($location, "/")[1], 2)
-        let $path := "/" || fn:substring-after($location, "/")
-        let $expr := $el/@expr/fn:string()
-        
-        let $stylesheet := <xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:sc="http://www.w3.org/2005/07/scxml">
-        <xsl:template match="*">
-            <xsl:copy>
-              <xsl:copy-of select="attribute::*" />
-              <xsl:apply-templates />
-            </xsl:copy>
-          </xsl:template>
-        <xsl:template match="sc:data[@id = '{$var}']{$path}">
-          <xsl:copy>
-            <xsl:value-of select="{$expr}"/>
-          </xsl:copy>
-        </xsl:template>
-        </xsl:stylesheet>
-        return xdmp:set($datamodel, xdmp:xslt-eval($stylesheet, $datamodel))
-        
+      case element(sc:assign) return xdmp:set($datamodel, execute-assign($el, $datamodel))
       default return ()
 
   return element {fn:node-name($instance)} {
@@ -85,15 +66,52 @@ declare function enter-state(
   }
 };
 
+
+(:
+Using XSLT to transform the datamodel based on the location and expression in the assign block. Don't yet know a way to
+do this in just XQuery.
+:)
+declare function execute-assign(
+  $assign as element(sc:assign),
+  $datamodel as element(sc:datamodel)
+  ) as element(sc:datamodel)
+{
+  let $location := $assign/@location/fn:string()
+  let $data-id := fn:substring(fn:tokenize($location, "/")[1], 2)
+  let $data-path := "/" || fn:substring-after($location, "/")
+  
+  let $expr := $assign/@expr/fn:string()
+  
+  let $stylesheet := 
+    <xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:sc="http://www.w3.org/2005/07/scxml">
+      <xsl:template match="*">
+        <xsl:copy>
+          <xsl:copy-of select="attribute::*" />
+          <xsl:apply-templates />
+        </xsl:copy>
+      </xsl:template>
+      <xsl:template match="sc:data[@id = '{$data-id}']{$data-path}">
+        <xsl:copy>
+          <xsl:value-of select="{$expr}"/>
+        </xsl:copy>
+      </xsl:template>
+    </xsl:stylesheet>
+  
+  return xdmp:xslt-eval($stylesheet, $datamodel)/sc:datamodel
+};
+
+
 declare function get-instance-id($instance as element(mlsc:instance)) as xs:string
 {
   $instance/mlsc:instance-id/fn:string()
 };
 
+
 declare function get-machine-id($instance as element(mlsc:instance)) as xs:string
 {
   $instance/mlsc:machine-id/fn:string()
 };
+
 
 declare function get-state($instance as element(mlsc:instance)) as xs:string
 {

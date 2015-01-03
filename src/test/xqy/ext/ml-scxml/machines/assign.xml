@@ -11,7 +11,7 @@
   </state>
   <state id="s1">
     <onentry>
-      <assign location="$ticket/price" expr="'12'" />
+      <assign location="$ticket/price" expr="'10'" />
     </onentry>
   </state>
   <state id="s2">
