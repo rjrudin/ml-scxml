@@ -1,8 +1,9 @@
 package com.marklogic.scxml.datamodel;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
+import com.jayway.restassured.RestAssured;
+import com.jayway.restassured.response.Response;
 import com.marklogic.scxml.AbstractScxmlTest;
 import com.marklogic.scxml.Instance;
 
@@ -32,8 +33,13 @@ public class SimpleTransitionTest extends AbstractScxmlTest {
     }
 
     @Test
-    @Ignore("TODO")
     public void invalidTransition() {
+        final String machineId = "two-simple-transitions";
+        String id = startMachineWithId(machineId);
 
+        Response r = RestAssured.post(SERVICE_PATH + "?rs:instanceId=" + id + "&rs:event=Unknown");
+        assertEquals(500, r.getStatusCode());
+        assertEquals("application/xml", r.getContentType());
+        assertTrue(r.asString().contains("Could not find transition for event 'Unknown' (MISSING-TRANSITION)"));
     }
 }

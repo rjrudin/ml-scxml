@@ -36,16 +36,20 @@ declare function trigger-event(
   $event as xs:string
   ) as element(mlsc:instance)
 {
-  let $state := $machine/sc:state[@id = $instance/mlsc:state/fn:string()]
+  let $state := $machine/element()[@id = $instance/mlsc:state/fn:string()]
   (: TODO Lots of matching logic to add here :)
   let $transition := $state/sc:transition[@event = $event][1]
-  let $target := fn:string($transition/@target)
-  let $new-state := ($machine/sc:state[@id = $target], $machine/sc:final[@id = $target])[1]
   return
-    if ($new-state) then 
-      enter-state($new-state, $machine, $instance)
-    else
-      fn:error(xs:QName("MISSING-STATE"), "Could not find state '" || $target || "' to transition to")
+    if (fn:not($transition)) then
+      fn:error(xs:QName("MISSING-TRANSITION"), "Could not find transition for event '" || $event || "'")
+    else 
+      let $target := fn:string($transition/@target)
+      let $new-state := ($machine/sc:state[@id = $target], $machine/sc:final[@id = $target])[1]
+      return
+        if ($new-state) then 
+          enter-state($new-state, $machine, $instance)
+        else
+          fn:error(xs:QName("MISSING-STATE"), "Could not find state '" || $target || "' to transition to")
 };
 
 
