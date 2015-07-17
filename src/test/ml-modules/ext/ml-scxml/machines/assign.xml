@@ -1,7 +1,12 @@
-<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" initial="first">
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" initial="first" datamodel="xpath">
   <datamodel>
     <data id="ticket">
       <price xmlns="">0</price>
+      <otherElement xmlns=""/>
+    </data>
+    <data id="secondTicket">
+      <price xmlns="">0</price>
+      <otherElement xmlns=""/>
     </data>
   </datamodel>
   <state id="first">
@@ -16,12 +21,18 @@
   </state>
   <state id="s2">
     <onentry>
-      <assign location="$ticket/price" expr="'20'" />
+      <assign location="$secondTicket/price" expr="'20'" />
     </onentry>
   </state>
   <state id="s3">
+    <datamodel>
+      <data id="thirdTicket">
+        <price xmlns="">0</price>
+        <otherElement xmlns=""/>
+      </data>
+    </datamodel>
     <onentry>
-      <assign location="$ticket/price" expr="'30'" />
+      <assign location="$thirdTicket/price" expr="'30'" />
     </onentry>
   </state>
 </scxml>

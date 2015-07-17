@@ -26,29 +26,33 @@ public class ExecuteAssignOnEntryTest extends AbstractScxmlTest {
     public void executeS1AssignmentOnEntry() {
         Response r = triggerEvent(instanceId, "e");
         assertResponseHasInstanceIdAndState(r, instanceId, "s1");
-
-        Instance i = loadInstance(instanceId);
-        i.assertState("s1");
-        i.assertDatamodelElementExists("ticket", "price[. = '10']");
+        assertStateAndPrices("s1", "10", "0", "0");
     }
 
     @Test
     public void executeS2AssignmentOnEntry() {
         Response r = triggerEvent(instanceId, "e2");
         assertResponseHasInstanceIdAndState(r, instanceId, "s2");
-
-        Instance i = loadInstance(instanceId);
-        i.assertState("s2");
-        i.assertDatamodelElementExists("ticket", "price[. = '20']");
+        assertStateAndPrices("s2", "0", "20", "0");
     }
 
     @Test
     public void executeS3AssignmentOnEntry() {
         Response r = triggerEvent(instanceId, "anyEvent");
         assertResponseHasInstanceIdAndState(r, instanceId, "s3");
+        assertStateAndPrices("s3", "0", "0", "30");
+    }
 
+    private void assertStateAndPrices(String state, String price1, String price2, String price3) {
         Instance i = loadInstance(instanceId);
-        i.assertState("s3");
-        i.assertDatamodelElementExists("ticket", "price[. = '30']");
+        i.assertState(state);
+        i.assertDatamodelElementExists("ticket", format("price[. = '%s']", price1));
+        i.assertDatamodelElementExists("secondTicket", format("price[. = '%s']", price2));
+        i.assertDatamodelElementExists("thirdTicket", format("price[. = '%s']", price3));
+
+        // Verify that our other elements weren't mistakenly dropped
+        i.assertDatamodelElementExists("ticket", "otherElement");
+        i.assertDatamodelElementExists("secondTicket", "otherElement");
+        i.assertDatamodelElementExists("thirdTicket", "otherElement");
     }
 }

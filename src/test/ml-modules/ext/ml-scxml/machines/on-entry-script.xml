@@ -1,4 +1,4 @@
-<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" initial="first">
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" initial="first" datamodel="xpath">
   <datamodel>
     <data id="ticket">
       <price xmlns="">0</price>

@@ -23,7 +23,15 @@ declare function start(
     element mlsc:machine-id {$machine-id},
     element mlsc:instance-id {$instance-id},
     element mlsc:state {fn:string($initial-state/@id)},
-    $machine/sc:datamodel
+    
+    (:
+    TODO I can't tell for sure, but I think it's possible to have a datamodel under scxml and a datamodel under one 
+    or more states. But each data element I believe must have a unique ID. So we can toss them all into a single datamodel
+    on the instance document.
+    :)
+    let $data := $machine//sc:datamodel/sc:data
+    where $data
+    return element sc:datamodel { $data }
   }
   
   return enter-state($initial-state, $machine, $instance)
