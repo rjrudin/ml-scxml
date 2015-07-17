@@ -5,8 +5,8 @@
     </data>
   </datamodel>
   <state id="first">
-    <transition event="e" cond="x==1" target="s1" />
-    <transition event="e" target="s2" />
+    <transition event="e" target="s1" />
+    <transition event="e2" target="s2" />
     <transition event="*" target="s3" />
   </state>
   <state id="s1">
