@@ -1,0 +1,21 @@
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" initial="first">
+  <datamodel>
+    <data id="ticket">
+      <price xmlns="">0</price>
+    </data>
+  </datamodel>
+  <state id="first">
+    <transition event="e" target="s1" />
+  </state>
+  <state id="s1">
+    <onentry>
+      <script>
+      <![CDATA[
+        import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+        declare variable $datamodel external;
+        lib:update($datamodel)
+      ]]>
+      </script>
+    </onentry>
+  </state>
+</scxml>

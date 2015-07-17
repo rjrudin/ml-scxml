@@ -70,6 +70,7 @@ declare function enter-state(
     return typeswitch ($el)
       case element(sc:log) return xdmp:log(xdmp:eval($el/@expr))
       case element(sc:assign) return xdmp:set($datamodel, execute-assign($el, $datamodel))
+      case element(sc:script) return xdmp:set($datamodel, execute-script($el, $datamodel))
       default return ()
 
   let $transition := mlscxp:build-transition($instance, $machine, $new-state) 
@@ -126,6 +127,23 @@ declare function execute-assign(
     </xsl:stylesheet>
   
   return xdmp:xslt-eval($stylesheet, $datamodel)/sc:datamodel
+};
+
+
+(:
+The spec at http://www.w3.org/TR/scxml/#script allows for either a src attribute or a text node, but not both. Trying 
+to specify a module, its namespace, and a function name in a src attribute seems awkward, so for now, just supporting 
+a text node, which is intended to be xdmp:eval'ed.
+:)
+declare function execute-script(
+  $script as element(sc:script),
+  $datamodel as element(sc:datamodel)
+  ) as element(sc:datamodel)
+{
+  xdmp:eval(
+    fn:string($script), 
+    (xs:QName("datamodel"), $datamodel)
+  )
 };
 
 

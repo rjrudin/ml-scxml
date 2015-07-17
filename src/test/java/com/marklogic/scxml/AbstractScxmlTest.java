@@ -9,6 +9,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestExecutionListeners;
 
 import com.jayway.restassured.RestAssured;
+import com.jayway.restassured.path.json.JsonPath;
 import com.jayway.restassured.response.Response;
 import com.marklogic.clientutil.DatabaseClientConfig;
 import com.marklogic.clientutil.spring.BasicConfig;
@@ -75,5 +76,11 @@ public abstract class AbstractScxmlTest extends AbstractSpringTest {
         assertEquals(200, r.getStatusCode());
         assertTrue(r.getContentType().startsWith("application/xml"));
         return new Instance(parse(r.asString()));
+    }
+
+    protected void assertResponseHasInstanceIdAndState(Response r, String instanceId, String state) {
+        JsonPath json = r.jsonPath();
+        assertEquals(instanceId, json.getString("instanceId"));
+        assertEquals(state, json.getString("state"));
     }
 }
