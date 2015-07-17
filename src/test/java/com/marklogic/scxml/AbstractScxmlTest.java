@@ -10,17 +10,17 @@ import org.springframework.test.context.TestExecutionListeners;
 
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.Response;
-import com.marklogic.client.helper.DatabaseClientConfig;
-import com.marklogic.test.jdom.NamespaceProvider;
-import com.marklogic.test.spring.AbstractSpringTest;
-import com.marklogic.test.spring.BasicTestConfig;
-import com.marklogic.test.spring.ModulesLoaderTestExecutionListener;
-import com.marklogic.test.spring.ModulesPath;
-import com.marklogic.test.spring.ModulesPaths;
+import com.marklogic.clientutil.DatabaseClientConfig;
+import com.marklogic.clientutil.spring.BasicConfig;
+import com.marklogic.junit.NamespaceProvider;
+import com.marklogic.junit.spring.AbstractSpringTest;
+import com.marklogic.junit.spring.ModulesLoaderTestExecutionListener;
+import com.marklogic.junit.spring.ModulesPath;
+import com.marklogic.junit.spring.ModulesPaths;
 
-@ContextConfiguration(classes = { BasicTestConfig.class })
+@ContextConfiguration(classes = { BasicConfig.class })
 @TestExecutionListeners(value = { ModulesLoaderTestExecutionListener.class })
-@ModulesPaths(paths = { @ModulesPath(baseDir = "src/main/xqy"), @ModulesPath(baseDir = "src/test/xqy") })
+@ModulesPaths(paths = { @ModulesPath(baseDir = "src/main/ml-modules"), @ModulesPath(baseDir = "src/test/ml-modules") })
 public abstract class AbstractScxmlTest extends AbstractSpringTest {
 
     protected final static String SERVICE_PATH = "/v1/resources/scxml";
@@ -51,7 +51,7 @@ public abstract class AbstractScxmlTest extends AbstractSpringTest {
 
     protected String startMachineWithId(String machineId) {
         Response r = postToService("rs:machineId=" + machineId);
-        assertEquals("application/json", r.getContentType());
+        assertTrue(r.getContentType().startsWith("application/json"));
         return r.jsonPath().getString("instanceId");
     }
 
@@ -65,7 +65,7 @@ public abstract class AbstractScxmlTest extends AbstractSpringTest {
             assertEquals(200, r.getStatusCode());
             return r;
         } catch (AssertionError ae) {
-            logger.error(r.asString());
+            logger.error("Expected response to have 200 as a status code: " + r.asString());
             throw ae;
         }
     }
@@ -73,7 +73,7 @@ public abstract class AbstractScxmlTest extends AbstractSpringTest {
     protected Instance loadInstance(String instanceId) {
         Response r = get(SERVICE_PATH + "?rs:instanceId=" + instanceId);
         assertEquals(200, r.getStatusCode());
-        assertEquals("application/xml", r.getContentType());
+        assertTrue(r.getContentType().startsWith("application/xml"));
         return new Instance(parse(r.asString()));
     }
 }

@@ -1,0 +1,5 @@
+{
+  "privilege-name":"ml-scxml-uri", 
+  "action":"/ml-scxml/", 
+  "kind":"uri"
+}

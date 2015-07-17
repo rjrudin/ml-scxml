@@ -4,6 +4,8 @@ module namespace resource = "http://marklogic.com/rest-api/resource/scxml";
 
 import module namespace mlsc = "http://marklogic.com/scxml" at "/ext/ml-scxml/lib/scxml-service-lib.xqy", "/ext/ml-scxml/lib/scxml-lib.xqy";
 
+declare namespace rapi = "http://marklogic.com/rest-api";
+
 declare function get(
   $context as map:map,
   $params  as map:map
@@ -15,7 +17,7 @@ declare function get(
   }
 };
 
-declare function post(
+declare %rapi:transaction-mode("update") function post(
   $context as map:map,
   $params  as map:map,
   $input   as document-node()*

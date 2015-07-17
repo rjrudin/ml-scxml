@@ -6,7 +6,7 @@ buildscript {
   }
   
   dependencies {
-    classpath "com.marklogic:ml-gradle:0.9.7"
+    classpath "com.marklogic:ml-gradle:2.0a12b"
   }
 }
 
@@ -21,7 +21,7 @@ repositories {
 }
 
 dependencies {
-  testCompile "com.marklogic:ml-junit:0.9.7"
+  testCompile "com.marklogic:ml-junit:2.0.3"
   testCompile 'com.jayway.restassured:rest-assured:2.3.1'
 }
 

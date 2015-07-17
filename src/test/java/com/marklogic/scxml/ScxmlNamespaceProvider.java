@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.jdom2.Namespace;
 
-import com.marklogic.test.jdom.MarkLogicNamespaceProvider;
+import com.marklogic.junit.MarkLogicNamespaceProvider;
 
 public class ScxmlNamespaceProvider extends MarkLogicNamespaceProvider {
 

@@ -1,6 +1,6 @@
 package com.marklogic.scxml;
 
-import com.marklogic.test.jdom.Fragment;
+import com.marklogic.junit.Fragment;
 
 public class Instance extends Fragment {
 

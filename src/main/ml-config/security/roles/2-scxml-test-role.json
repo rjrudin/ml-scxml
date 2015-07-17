@@ -1,0 +1,16 @@
+{
+  "role-name" : "scxml-test-role",
+  "role" : [ "rest-admin", "scxml-user-role" ],
+  "privilege": [
+    {
+      "privilege-name": "xdbc:eval-in",
+      "action": "http://marklogic.com/xdmp/privileges/xdbc-eval-in",
+      "kind": "execute"
+    },
+    {
+      "privilege-name": "xdmp:forest-clear",
+      "action": "http://marklogic.com/xdmp/privileges/xdmp-forest-clear",
+      "kind": "execute"
+    }
+  ]
+}

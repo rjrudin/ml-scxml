@@ -23,7 +23,7 @@ declare function start($machine-id as xs:string) as element(mlsc:instance) {
   let $instance := mlsc:start($machine-id, $machine, $instance-id)
   let $uri := build-instance-uri($instance-id)
   return (
-    xdmp:document-insert($uri, $instance),
+    xdmp:document-insert($uri, $instance, (xdmp:permission("rest-reader", "read"), xdmp:permission("rest-writer", "update"))),
     $instance
   )
 };

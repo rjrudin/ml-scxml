@@ -1,0 +1,5 @@
+{
+  "user-name" : "scxml-tester",
+  "password" : "password",
+  "role" : [ "scxml-test-role" ]
+}

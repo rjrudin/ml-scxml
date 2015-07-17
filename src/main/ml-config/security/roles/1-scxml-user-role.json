@@ -1,0 +1,21 @@
+{
+  "role-name" : "scxml-user-role",
+  "role" : [ "rest-writer" ],
+  "privilege": [
+    {
+      "privilege-name": "xdmp:eval",
+      "action": "http://marklogic.com/xdmp/privileges/xdmp-eval",
+      "kind": "execute"
+    },
+    {
+      "privilege-name": "xdmp:eval-in",
+      "action": "http://marklogic.com/xdmp/privileges/xdmp-eval-in",
+      "kind": "execute"
+    },
+    {
+      "privilege-name": "ml-scxml-uri",
+      "action": "/ml-scxml/",
+      "kind": "uri"
+    }
+  ]
+}
