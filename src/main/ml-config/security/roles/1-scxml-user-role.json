@@ -13,6 +13,11 @@
       "kind": "execute"
     },
     {
+      "privilege-name": "xdmp:xslt-eval",
+      "action": "http://marklogic.com/xdmp/privileges/xslt-eval",
+      "kind": "execute"
+    },
+    {
       "privilege-name": "ml-scxml-uri",
       "action": "/ml-scxml/",
       "kind": "uri"

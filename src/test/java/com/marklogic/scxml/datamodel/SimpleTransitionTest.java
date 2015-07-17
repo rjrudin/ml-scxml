@@ -39,7 +39,7 @@ public class SimpleTransitionTest extends AbstractScxmlTest {
 
         Response r = RestAssured.post(SERVICE_PATH + "?rs:instanceId=" + id + "&rs:event=Unknown");
         assertEquals(500, r.getStatusCode());
-        assertEquals("application/xml", r.getContentType());
+        assertTrue("Expecting a JSON response", r.getContentType().startsWith("application/json"));
         assertTrue(r.asString().contains("Could not find transition for event 'Unknown' (MISSING-TRANSITION)"));
     }
 }
