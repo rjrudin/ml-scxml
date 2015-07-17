@@ -34,7 +34,7 @@ declare function start(
     return element sc:datamodel { $data }
   }
   
-  return enter-state($initial-state, $machine, $instance)
+  return enter-state($initial-state, (), $machine, $instance)
 };
 
 
@@ -44,12 +44,12 @@ declare function trigger-event(
   $event as xs:string
   ) as element(mlsc:instance)
 {
-  let $state := $machine/element()[@id = $instance/mlsc:state/fn:string()]
+  let $current-state := $machine/element()[@id = $instance/mlsc:state/fn:string()]
   
   (: TODO Lots of matching logic to add here :)
   let $transition := (
-    $state/sc:transition[@event = $event],
-    $state/sc:transition[@event = "*"]
+    $current-state/sc:transition[@event = $event],
+    $current-state/sc:transition[@event = "*"]
   )[1]
   
   return
@@ -60,29 +60,26 @@ declare function trigger-event(
       let $new-state := ($machine/sc:state[@id = $target], $machine/sc:final[@id = $target])[1]
       return
         if ($new-state) then 
-          enter-state($new-state, $machine, $instance)
+          enter-state($new-state, $current-state, $machine, $instance)
         else
-          fn:error(xs:QName("MISSING-STATE"), "Could not find state '" || $target || "' to transition to")
+          fn:error(xs:QName("MISSING-STATE"), "Could not find state '" || $target || "' to transition to for event '" || $event || "'")
 };
 
 
 declare function enter-state(
-  $new-state as element(), 
+  $new-state as element(),
+  $current-state as element()?,
   $machine as element(sc:scxml), 
   $instance as element(mlsc:instance)
   ) as element(mlsc:instance)
 {
   let $datamodel := $instance/sc:datamodel
-  let $_ := 
-    for $el in $new-state/sc:onentry/element()
-    return typeswitch ($el)
-      case element(sc:log) return xdmp:log(xdmp:eval($el/@expr))
-      case element(sc:assign) return xdmp:set($datamodel, execute-assign($el, $datamodel))
-      case element(sc:script) return xdmp:set($datamodel, execute-script($el, $datamodel))
-      default return ()
+  
+  let $datamodel := execute-executable-content($current-state/sc:onexit/element(), $datamodel)
+  let $datamodel := execute-executable-content($new-state/sc:onentry/element(), $datamodel)
 
   let $transition := mlscxp:build-transition($instance, $machine, $new-state) 
-    
+  
   return element {fn:node-name($instance)} {
     $instance/@*,
     
@@ -101,6 +98,23 @@ declare function enter-state(
       element mlsc:transitions {$transition}
     else ()
   }
+};
+
+
+declare function execute-executable-content(
+  $executable-content-elements as element()*,
+  $datamodel as element(sc:datamodel)
+  ) as element(sc:datamodel)
+{
+  let $_ := 
+    for $el in $executable-content-elements
+    return typeswitch ($el)
+      case element(sc:log) return xdmp:log(xdmp:eval($el/@expr))
+      case element(sc:assign) return xdmp:set($datamodel, execute-assign($el, $datamodel))
+      case element(sc:script) return xdmp:set($datamodel, execute-script($el, $datamodel))
+      default return ()
+  
+  return $datamodel
 };
 
 

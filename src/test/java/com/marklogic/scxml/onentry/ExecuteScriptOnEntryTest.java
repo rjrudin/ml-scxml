@@ -4,7 +4,6 @@ import org.junit.Test;
 
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.Response;
-import com.marklogic.junit.Fragment;
 import com.marklogic.scxml.AbstractScxmlTest;
 import com.marklogic.scxml.Instance;
 
@@ -22,7 +21,7 @@ public class ExecuteScriptOnEntryTest extends AbstractScxmlTest {
         i.assertDatamodelElementExists("ticket", "newElement[. = 'This was inserted via a script block']");
 
         String testXml = RestAssured.get("/v1/documents?uri=/ml-scxml/test/123.xml").asString();
-        Fragment f = parse(testXml);
-        f.assertElementExists("Verifying that the script function inserted a test document", "/helloWorld");
+        parse(testXml)
+                .assertElementExists("Verifying that the script function inserted a test document", "/helloWorld");
     }
 }

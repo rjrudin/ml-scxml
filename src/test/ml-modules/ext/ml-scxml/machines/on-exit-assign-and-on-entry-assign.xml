@@ -1,0 +1,19 @@
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" initial="first" datamodel="xpath">
+  <datamodel>
+    <data id="ticket">
+      <price xmlns="">0</price>
+      <color xmlns="">red</color>
+    </data>
+  </datamodel>
+  <state id="first">
+    <onexit>
+      <assign location="$ticket/price" expr="'10'" />
+    </onexit>
+    <transition event="e" target="s1" />
+  </state>
+  <state id="s1">
+    <onentry>
+      <assign location="$ticket/price" expr="'20'" />
+    </onentry>
+  </state>
+</scxml>

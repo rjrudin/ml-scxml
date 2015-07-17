@@ -19,10 +19,14 @@ declare function update($datamodel as element(sc:datamodel)) as element(sc:datam
     (xdmp:permission("rest-reader", "read"), xdmp:permission("rest-writer", "update"))
   ),
   
-  <sc:datamodel>
-    <sc:data id="ticket">
-      <price>0</price>
-      <newElement>This was inserted via a script block</newElement>
-    </sc:data>
-  </sc:datamodel>
+  element sc:datamodel {
+    for $data in $datamodel/sc:data
+    return element sc:data {
+      $data/@*,
+      $data/node(),
+      if ($data/@id = "ticket") then 
+        <newElement>This was inserted via a script block</newElement>
+      else ()  
+    }
+  }
 };
