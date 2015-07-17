@@ -1,4 +1,4 @@
-package com.marklogic.scxml.datamodel;
+package com.marklogic.scxml.transition;
 
 import org.junit.Test;
 

@@ -1,4 +1,4 @@
-package com.marklogic.scxml.datamodel;
+package com.marklogic.scxml.onentry;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -8,7 +8,7 @@ import com.jayway.restassured.response.Response;
 import com.marklogic.scxml.AbstractScxmlTest;
 import com.marklogic.scxml.Instance;
 
-public class AssignTest extends AbstractScxmlTest {
+public class ExecuteAssignOnEntryTest extends AbstractScxmlTest {
 
     private String instanceId;
 
