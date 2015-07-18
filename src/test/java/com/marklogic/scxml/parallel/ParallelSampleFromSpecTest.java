@@ -14,6 +14,8 @@ public class ParallelSampleFromSpecTest extends AbstractScxmlTest {
         triggerEvent(instanceId, "e");
 
         Instance i = loadInstance(instanceId);
-        i.prettyPrint();
+        i.assertActiveStates("S12", "S21");
+        i.assertTransitionExists("first", "S12");
+        i.assertTransitionExists("first", "S21");
     }
 }

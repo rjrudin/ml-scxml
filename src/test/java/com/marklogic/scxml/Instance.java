@@ -20,6 +20,12 @@ public class Instance extends Fragment {
         assertElementValue("/mlsc:instance/mlsc:active-states/mlsc:active-state", state);
     }
 
+    public void assertActiveStates(String... states) {
+        for (String state : states) {
+            assertActiveState(state);
+        }
+    }
+
     public void assertDatamodelElementExists(String dataId, String xpath) {
         String path = format("/mlsc:instance/sc:datamodel/sc:data[@id = '%s']/%s", dataId, xpath);
         assertElementExists(path);

@@ -21,6 +21,7 @@ repositories {
 }
 
 dependencies {
+  compile "com.marklogic:ml-javaclient-util:2.0.8"
   testCompile "com.marklogic:ml-junit:2.0.3"
   testCompile 'com.jayway.restassured:rest-assured:2.3.1'
 }

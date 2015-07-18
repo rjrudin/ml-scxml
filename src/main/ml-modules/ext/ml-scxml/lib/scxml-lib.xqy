@@ -10,6 +10,8 @@ import module namespace mlscxp = "http://marklogic.com/scxml/extension-points" a
 
 declare namespace sc = "http://www.w3.org/2005/07/scxml";
 
+declare variable $TRACE-EVENT := "ml-scxml";
+
 declare function start(
   $machine-id as xs:string,
   $machine as element(sc:scxml),
@@ -74,7 +76,7 @@ declare function handle-event(
       let $new-state := ($machine/sc:state[@id = $target], $machine/sc:final[@id = $target])[1]
       
       return
-        if ($new-state) then 
+        if ($new-state) then
           enter-states($new-state, $current-state, $machine, $instance)
           
         else
@@ -82,11 +84,9 @@ declare function handle-event(
           let $child-state := $machine//sc:state[@id = $target]
           return
             if ($child-state) then
-              (: Gotta check for a parallel :)
-              let $parallel := $child-state/ancestor::parallel
+              let $parallel := $child-state/ancestor::sc:parallel
               return
                 if ($parallel) then
-                  (: Find the other states to enter in to :)
                   let $other-states := $parallel/sc:state[fn:not(@id = $target) and fn:not(.//sc:state[@id = $target])]
                   let $other-initial-states := 
                     (: TODO Support initial element too :)
@@ -111,6 +111,8 @@ declare function enter-states(
   $instance as element(mlsc:instance)
   ) as element(mlsc:instance)
 {
+  xdmp:trace($TRACE-EVENT, ("Entering states for instance " || get-instance-id($instance), $new-states)),
+  
   let $datamodel := $instance/sc:datamodel
   
   let $datamodel := execute-executable-content($current-state/sc:onexit/element(), $datamodel)

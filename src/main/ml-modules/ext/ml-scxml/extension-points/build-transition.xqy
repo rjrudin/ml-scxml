@@ -20,16 +20,14 @@ declare function build-transition(
 {
   (: Using attributes for states here, as I don't think we'd want them to hit on free text searches :)
   (: TODO Unique QName based on "to" state, or stick with generic QName? :)
-  for $new-state in $new-states
-  return 
-    <mlsc:transition date-time="{fn:current-dateTime()}">
-      {
-      if ($current-state) then 
-        <mlsc:from state="{fn:string($current-state/@id)}"/>
-      else (),
-      
-      for $new-state in $new-states
-      return <mlsc:to state="{fn:string($new-state/@id)}"/> 
-      }
-    </mlsc:transition>
+  <mlsc:transition date-time="{fn:current-dateTime()}">
+    {
+    if ($current-state) then 
+      <mlsc:from state="{fn:string($current-state/@id)}"/>
+    else (),
+    
+    for $new-state in $new-states
+    return <mlsc:to state="{fn:string($new-state/@id)}"/> 
+    }
+  </mlsc:transition>
 };
