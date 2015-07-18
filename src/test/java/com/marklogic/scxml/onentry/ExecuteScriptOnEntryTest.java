@@ -17,7 +17,7 @@ public class ExecuteScriptOnEntryTest extends AbstractScxmlTest {
         assertResponseHasInstanceIdAndState(r, instanceId, "s1");
 
         Instance i = loadInstance(instanceId);
-        i.assertState("s1");
+        i.assertActiveState("s1");
         i.assertDatamodelElementExists("ticket", "newElement[. = 'This was inserted via a script block']");
 
         String testXml = RestAssured.get("/v1/documents?uri=/ml-scxml/test/123.xml").asString();

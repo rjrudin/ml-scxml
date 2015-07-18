@@ -17,16 +17,16 @@ public class SimpleTransitionTest extends AbstractScxmlTest {
         Instance i = loadInstance(id);
         i.assertMachineId(machineId);
         i.assertInstanceId(id);
-        i.assertState("Open");
+        i.assertActiveState("Open");
 
         triggerEvent(id, "Start");
         i = loadInstance(id);
-        i.assertState("In Progress");
+        i.assertActiveState("In Progress");
         i.assertTransitionExists("Open", "In Progress");
 
         triggerEvent(id, "Finish");
         i = loadInstance(id);
-        i.assertState("Closed");
+        i.assertActiveState("Closed");
         i.assertTransitionExists("Open", "In Progress");
         i.assertTransitionExists("In Progress", "Closed");
         i.prettyPrint();

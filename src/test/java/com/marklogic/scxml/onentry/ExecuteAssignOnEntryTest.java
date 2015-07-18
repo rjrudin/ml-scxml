@@ -18,7 +18,7 @@ public class ExecuteAssignOnEntryTest extends AbstractScxmlTest {
         Instance i = loadInstance(instanceId);
         i.assertMachineId("assign");
         i.assertInstanceId(instanceId);
-        i.assertState("first");
+        i.assertActiveState("first");
         i.assertDatamodelElementExists("ticket", "price[. = '0']");
     }
 
@@ -45,7 +45,7 @@ public class ExecuteAssignOnEntryTest extends AbstractScxmlTest {
 
     private void assertStateAndPrices(String state, String price1, String price2, String price3) {
         Instance i = loadInstance(instanceId);
-        i.assertState(state);
+        i.assertActiveState(state);
         i.assertDatamodelElementExists("ticket", format("price[. = '%s']", price1));
         i.assertDatamodelElementExists("secondTicket", format("price[. = '%s']", price2));
         i.assertDatamodelElementExists("thirdTicket", format("price[. = '%s']", price3));

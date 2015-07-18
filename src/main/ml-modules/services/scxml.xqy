@@ -27,7 +27,7 @@ declare %rapi:transaction-mode("update") function post(
   return
     if ($instance-id) then 
       instance-to-json(
-        mlsc:trigger-event($instance-id, map:get($params, "event"))
+        mlsc:handle-event($instance-id, map:get($params, "event"))
       )
     else
       instance-to-json(

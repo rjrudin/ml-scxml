@@ -16,13 +16,18 @@ declare function start(
   $instance-id as xs:string
   ) as element(mlsc:instance)
 {
+  (:
+  So for a parallel example like the microwave, the initial is the parallel element. But that's not a state. Instead,
+  the machine has two states - the state of the engine, which initially is off, and the state of the
+  door, which is initially closed. Does the instance then have two states - engine.off and door.closed?
+  :)
   let $initial-state := ($machine/(sc:state|sc:final)[@id = $machine/@initial], $machine/sc:state[1])[1]
   
   let $instance := element mlsc:instance {
     attribute created-date-time {fn:current-dateTime()},
     element mlsc:machine-id {$machine-id},
     element mlsc:instance-id {$instance-id},
-    element mlsc:state {fn:string($initial-state/@id)},
+    element mlsc:active-state {fn:string($initial-state/@id)},
     
     (:
     TODO I can't tell for sure, but I think it's possible to have a datamodel under scxml and a datamodel under one 
@@ -38,15 +43,23 @@ declare function start(
 };
 
 
-declare function trigger-event(
+declare function handle-event(
   $instance as element(mlsc:instance),
   $machine as element(sc:scxml),
   $event as xs:string
   ) as element(mlsc:instance)
 {
-  let $current-state := $machine/element()[@id = $instance/mlsc:state/fn:string()]
+  let $current-state := $machine/element()[@id = $instance/mlsc:active-state/fn:string()]
   
-  (: TODO Lots of matching logic to add here :)
+  (: 
+  TODO Lots of matching logic to add here
+  
+  From the spec: "Compound states also affect how transitions are selected. When looking for transitions, the state 
+  machine first looks in the most deeply nested active state(s), i.e., in the atomic state(s) that have no substates. 
+  If no transitions match in the atomic state, the state machine will look in its parent state, then in the 
+  parent's parent, etc. Thus transitions in ancestor states serve as defaults that will be taken if no 
+  transition matches in a descendant state. If no transition matches in any state, the event is discarded." 
+  :)
   let $transition := (
     $current-state/sc:transition[@event = $event],
     $current-state/sc:transition[@event = "*"]
@@ -85,7 +98,7 @@ declare function enter-state(
     
     for $kid in $instance/element()
     return typeswitch($kid)
-      case element(mlsc:state) return element mlsc:state {fn:string($new-state/@id)}
+      case element(mlsc:active-state) return element mlsc:active-state {fn:string($new-state/@id)}
       case element(sc:datamodel) return $datamodel
       case element(mlsc:transitions) return 
         element mlsc:transitions {
@@ -183,5 +196,5 @@ declare function get-machine-id($instance as element(mlsc:instance)) as xs:strin
 
 declare function get-state($instance as element(mlsc:instance)) as xs:string
 {
-  $instance/mlsc:state/fn:string()
+  $instance/mlsc:active-state/fn:string()
 };

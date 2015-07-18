@@ -16,8 +16,8 @@ public class Instance extends Fragment {
         assertElementValue("/mlsc:instance/mlsc:instance-id", instanceId);
     }
 
-    public void assertState(String state) {
-        assertElementValue("/mlsc:instance/mlsc:state", state);
+    public void assertActiveState(String state) {
+        assertElementValue("/mlsc:instance/mlsc:active-state", state);
     }
 
     public void assertDatamodelElementExists(String dataId, String xpath) {

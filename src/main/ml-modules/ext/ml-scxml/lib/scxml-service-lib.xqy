@@ -32,14 +32,14 @@ declare function start($machine-id as xs:string) as element(mlsc:instance) {
 (:
 Trigger the given event on the instance with the given ID. Returns the updated instance.
 :)
-declare function trigger-event(
+declare function handle-event(
   $instance-id as xs:string,
   $event as xs:string
   ) as element(mlsc:instance)
 {
   let $instance := get-instance($instance-id)
   let $machine := mlscxp:find-machine(get-machine-id($instance))
-  let $new-instance := mlsc:trigger-event($instance, $machine, $event)
+  let $new-instance := mlsc:handle-event($instance, $machine, $event)
   let $_ := xdmp:node-replace($instance, $new-instance)
   return $new-instance
 };

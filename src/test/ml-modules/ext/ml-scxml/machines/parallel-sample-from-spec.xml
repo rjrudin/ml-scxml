@@ -1,0 +1,33 @@
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" initial="first">
+
+  <state id="first">
+    <transition event="e" target="S12" />
+  </state>
+
+  <parallel id="p">
+
+    <transition event="done.state.p" target="someOtherState" />
+
+    <state id="S1" initial="S11">
+      <state id="S11">
+        <transition event="e4" target="S12" />
+      </state>
+      <state id="S12">
+        <transition event="e1" target="S1Final" />
+      </state>
+      <final id="S1Final" />
+    </state>
+
+    <state id="S2" initial="S21">
+      <state id="S21">
+        <transition event="e1" target="S22" />
+      </state>
+      <state id="S22">
+        <transition event="e2" target="S2Final" />
+      </state>
+      <final id="S2Final" />
+    </state>
+
+  </parallel>
+
+</scxml>
