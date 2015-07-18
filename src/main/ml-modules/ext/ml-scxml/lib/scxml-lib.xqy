@@ -17,9 +17,7 @@ declare function start(
   ) as element(mlsc:instance)
 {
   (:
-  So for a parallel example like the microwave, the initial is the parallel element. But that's not a state. Instead,
-  the machine has two states - the state of the engine, which initially is off, and the state of the
-  door, which is initially closed. Does the instance then have two states - engine.off and door.closed?
+  TODO Support initial element too
   :)
   let $initial-state := ($machine/(sc:state|sc:final)[@id = $machine/@initial], $machine/sc:state[1])[1]
   
@@ -27,7 +25,9 @@ declare function start(
     attribute created-date-time {fn:current-dateTime()},
     element mlsc:machine-id {$machine-id},
     element mlsc:instance-id {$instance-id},
-    element mlsc:active-state {fn:string($initial-state/@id)},
+    element mlsc:active-states {
+      element mlsc:active-state {fn:string($initial-state/@id)}
+    },
     
     (:
     TODO I can't tell for sure, but I think it's possible to have a datamodel under scxml and a datamodel under one 
@@ -39,7 +39,7 @@ declare function start(
     return element sc:datamodel { $data }
   }
   
-  return enter-state($initial-state, (), $machine, $instance)
+  return enter-states($initial-state, (), $machine, $instance)
 };
 
 
@@ -49,7 +49,7 @@ declare function handle-event(
   $event as xs:string
   ) as element(mlsc:instance)
 {
-  let $current-state := $machine/element()[@id = $instance/mlsc:active-state/fn:string()]
+  let $current-state := $machine/element()[@id = get-active-states($instance)]
   
   (: 
   TODO Lots of matching logic to add here
@@ -69,18 +69,43 @@ declare function handle-event(
     if (fn:not($transition)) then
       fn:error(xs:QName("MISSING-TRANSITION"), "Could not find transition for event '" || $event || "'")
     else 
+    
       let $target := fn:string($transition/@target)
       let $new-state := ($machine/sc:state[@id = $target], $machine/sc:final[@id = $target])[1]
+      
       return
         if ($new-state) then 
-          enter-state($new-state, $current-state, $machine, $instance)
+          enter-states($new-state, $current-state, $machine, $instance)
+          
         else
-          fn:error(xs:QName("MISSING-STATE"), "Could not find state '" || $target || "' to transition to for event '" || $event || "'")
+          (: Now look for a child state; assuming a state ID must be unique :)
+          let $child-state := $machine//sc:state[@id = $target]
+          return
+            if ($child-state) then
+              (: Gotta check for a parallel :)
+              let $parallel := $child-state/ancestor::parallel
+              return
+                if ($parallel) then
+                  (: Find the other states to enter in to :)
+                  let $other-states := $parallel/sc:state[fn:not(@id = $target) and fn:not(.//sc:state[@id = $target])]
+                  let $other-initial-states := 
+                    (: TODO Support initial element too :)
+                    for $other-state in $other-states
+                    return $other-state/sc:state[@id = $other-state/@initial]
+                  
+                  return enter-states(($child-state, $other-initial-states), $current-state, $machine, $instance)
+                  
+                else
+                  enter-states($child-state, $current-state, $machine, $instance)
+                  
+            else
+              (: The spec says to just "discard" the event, but for now, throwing an error to signify an issue :)
+              fn:error(xs:QName("MISSING-STATE"), "Could not find state '" || $target || "' to transition to for event '" || $event || "'")
 };
 
 
-declare function enter-state(
-  $new-state as element(),
+declare function enter-states(
+  $new-states as element()+,
   $current-state as element()?,
   $machine as element(sc:scxml), 
   $instance as element(mlsc:instance)
@@ -89,26 +114,32 @@ declare function enter-state(
   let $datamodel := $instance/sc:datamodel
   
   let $datamodel := execute-executable-content($current-state/sc:onexit/element(), $datamodel)
-  let $datamodel := execute-executable-content($new-state/sc:onentry/element(), $datamodel)
+  let $datamodel := execute-executable-content($new-states/sc:onentry/element(), $datamodel)
 
-  let $transition := mlscxp:build-transition($instance, $machine, $new-state) 
+  let $transitions := mlscxp:build-transition($new-states, $current-state, $machine, $instance) 
   
+  let $new-active-states := 
+    element mlsc:active-states { 
+      for $state in $new-states
+      return element mlsc:active-state {fn:string($state/@id)}
+    }
+    
   return element {fn:node-name($instance)} {
     $instance/@*,
     
     for $kid in $instance/element()
     return typeswitch($kid)
-      case element(mlsc:active-state) return element mlsc:active-state {fn:string($new-state/@id)}
+      case element(mlsc:active-states) return $new-active-states
       case element(sc:datamodel) return $datamodel
       case element(mlsc:transitions) return 
         element mlsc:transitions {
           $kid/*,
-          $transition
+          $transitions
         }
       default return $kid,
       
     if (fn:not($instance/mlsc:transitions)) then 
-      element mlsc:transitions {$transition}
+      element mlsc:transitions {$transitions}
     else ()
   }
 };
@@ -194,7 +225,7 @@ declare function get-machine-id($instance as element(mlsc:instance)) as xs:strin
 };
 
 
-declare function get-state($instance as element(mlsc:instance)) as xs:string
+declare function get-active-states($instance as element(mlsc:instance)) as xs:string+
 {
-  $instance/mlsc:active-state/fn:string()
+  $instance/mlsc:active-states/mlsc:active-state/fn:string()
 };

@@ -43,7 +43,14 @@ declare private function instance-to-json($instance as element(mlsc:instance)) a
       let $o := json:object()
       return (
         map:put($o, "instanceId", mlsc:get-instance-id($instance)),
-        map:put($o, "state", mlsc:get-state($instance)),
+        map:put($o, "active-states", 
+          let $array := json:array()
+          return (
+            for $state in mlsc:get-active-states($instance)
+            return json:array-push($array, $state),
+            $array
+          )
+        ),
         $o,
         xdmp:set-response-content-type("application/json")
       )

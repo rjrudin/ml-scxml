@@ -4,6 +4,8 @@ import static com.jayway.restassured.RestAssured.basic;
 import static com.jayway.restassured.RestAssured.get;
 import static com.jayway.restassured.RestAssured.post;
 
+import java.util.List;
+
 import org.junit.Before;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestExecutionListeners;
@@ -81,6 +83,7 @@ public abstract class AbstractScxmlTest extends AbstractSpringTest {
     protected void assertResponseHasInstanceIdAndState(Response r, String instanceId, String state) {
         JsonPath json = r.jsonPath();
         assertEquals(instanceId, json.getString("instanceId"));
-        assertEquals(state, json.getString("state"));
+        List<String> states = json.getList("active-states", String.class);
+        assertTrue(format("Did not find expected state %s in active-states: " + states, state), states.contains(state));
     }
 }
