@@ -6,7 +6,7 @@
 
   <parallel id="p">
 
-    <transition event="done.state.p" target="someOtherState" />
+    <transition event="done.state.p" target="finalState" />
 
     <state id="S1" initial="S11">
       <state id="S11">
@@ -29,5 +29,11 @@
     </state>
 
   </parallel>
+
+  <final id="finalState">
+    <onentry>
+      <log expr="'All done!'" />
+    </onentry>
+  </final>
 
 </scxml>

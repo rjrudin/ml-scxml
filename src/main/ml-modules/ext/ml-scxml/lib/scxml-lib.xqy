@@ -51,56 +51,60 @@ declare function handle-event(
   $event as xs:string
   ) as element(mlsc:instance)
 {
-  let $current-state := $machine/element()[@id = get-active-states($instance)]
+  let $current-states := $machine//(sc:state|sc:initial)[@id = get-active-states($instance)]
   
-  (: 
-  TODO Lots of matching logic to add here
+  let $_ :=
+    for $current-state in $current-states 
+    let $transition := (
+      $current-state/sc:transition[@event = $event],
+      $current-state/sc:transition[@event = "*"]
+    )[1]
+    
+    return
+      if (fn:not($transition)) then
+        fn:error(xs:QName("MISSING-TRANSITION"), "Could not find transition for event '" || $event || "'")
+      else 
+        xdmp:set($instance, execute-transition($transition, $current-state, $instance, $machine))
   
-  From the spec: "Compound states also affect how transitions are selected. When looking for transitions, the state 
-  machine first looks in the most deeply nested active state(s), i.e., in the atomic state(s) that have no substates. 
-  If no transitions match in the atomic state, the state machine will look in its parent state, then in the 
-  parent's parent, etc. Thus transitions in ancestor states serve as defaults that will be taken if no 
-  transition matches in a descendant state. If no transition matches in any state, the event is discarded." 
-  :)
-  let $transition := (
-    $current-state/sc:transition[@event = $event],
-    $current-state/sc:transition[@event = "*"]
-  )[1]
+  return $instance
+};
+
+
+(:
+This implementation assumes that initial/state/final IDs are unique. I can't think of a good reason for them not to be,
+and things would get very confusing if they weren't.
+:)
+declare function execute-transition(
+  $transition as element(sc:transition),
+  $current-state as element(),
+  $instance as element(mlsc:instance),
+  $machine as element(sc:scxml)
+  ) as element(mlsc:instance)
+{
+  xdmp:trace($TRACE-EVENT, ("Executing transition for instance " || get-instance-id($instance), $transition)),
+  
+  let $target := fn:string($transition/@target)
+  let $new-state := $machine//(sc:state|sc:final)[@id = $target]
   
   return
-    if (fn:not($transition)) then
-      fn:error(xs:QName("MISSING-TRANSITION"), "Could not find transition for event '" || $event || "'")
-    else 
-    
-      let $target := fn:string($transition/@target)
-      let $new-state := ($machine/sc:state[@id = $target], $machine/sc:final[@id = $target])[1]
-      
+    if ($new-state) then
+      let $parallel := $new-state/ancestor::sc:parallel
       return
-        if ($new-state) then
-          enter-states($new-state, $current-state, $machine, $instance)
+        if ($parallel) then
+          let $other-states := $parallel/sc:state[fn:not(@id = $target) and fn:not(.//sc:state[@id = $target])]
+          let $other-initial-states := 
+            (: TODO Support initial element too :)
+            for $other-state in $other-states
+            return $other-state/sc:state[@id = $other-state/@initial]
+          
+          return enter-states(($new-state, $other-initial-states), $current-state, $machine, $instance)
           
         else
-          (: Now look for a child state; assuming a state ID must be unique :)
-          let $child-state := $machine//sc:state[@id = $target]
-          return
-            if ($child-state) then
-              let $parallel := $child-state/ancestor::sc:parallel
-              return
-                if ($parallel) then
-                  let $other-states := $parallel/sc:state[fn:not(@id = $target) and fn:not(.//sc:state[@id = $target])]
-                  let $other-initial-states := 
-                    (: TODO Support initial element too :)
-                    for $other-state in $other-states
-                    return $other-state/sc:state[@id = $other-state/@initial]
-                  
-                  return enter-states(($child-state, $other-initial-states), $current-state, $machine, $instance)
-                  
-                else
-                  enter-states($child-state, $current-state, $machine, $instance)
-                  
-            else
-              (: The spec says to just "discard" the event, but for now, throwing an error to signify an issue :)
-              fn:error(xs:QName("MISSING-STATE"), "Could not find state '" || $target || "' to transition to for event '" || $event || "'")
+          enter-states($new-state, $current-state, $machine, $instance)
+          
+    else
+      (: The spec says to just "discard" the event, but for now, throwing an error to signify an issue :)
+      fn:error(xs:QName("MISSING-STATE"), "Could not find state '" || $target || "' to transition to for event '" || $transition/@event || "'")
 };
 
 
