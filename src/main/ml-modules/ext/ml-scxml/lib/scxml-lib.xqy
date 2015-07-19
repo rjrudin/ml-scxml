@@ -18,24 +18,17 @@ declare function start(
   $instance-id as xs:string
   ) as element(mlsc:instance)
 {
-  (:
-  TODO Support initial element too
-  :)
-  let $initial-state := ($machine/(sc:state|sc:final)[@id = $machine/@initial], $machine/sc:state[1])[1]
+  let $initial-state := ($machine/sc:initial, $machine/(sc:state|sc:final)[@id = $machine/@initial], $machine/sc:state[1])[1]
+  let $_ := xdmp:trace($TRACE-EVENT, "Starting machine with id " || $machine-id || " and initial state " || $initial-state/@id)
   
   let $instance := element mlsc:instance {
     attribute created-date-time {fn:current-dateTime()},
     element mlsc:machine-id {$machine-id},
     element mlsc:instance-id {$instance-id},
     element mlsc:active-states {
-      element mlsc:active-state {fn:string($initial-state/@id)}
+      element mlsc:active-state {$initial-state/@id/fn:string()}
     },
     
-    (:
-    TODO I can't tell for sure, but I think it's possible to have a datamodel under scxml and a datamodel under one 
-    or more states. But each data element I believe must have a unique ID. So we can toss them all into a single datamodel
-    on the instance document.
-    :)
     let $data := $machine//sc:datamodel/sc:data
     where $data
     return element sc:datamodel { $data }
@@ -51,6 +44,8 @@ declare function handle-event(
   $event as xs:string
   ) as element(mlsc:instance)
 {
+  xdmp:trace($TRACE-EVENT, ("Handling event " || $event || " for instance " || get-instance-id($instance))),
+   
   let $current-states := $machine//(sc:state|sc:initial)[@id = get-active-states($instance)]
   
   let $_ :=
@@ -91,13 +86,25 @@ declare function execute-transition(
       let $parallel := $new-state/ancestor::sc:parallel
       return
         if ($parallel) then
-          let $other-states := $parallel/sc:state[fn:not(@id = $target) and fn:not(.//sc:state[@id = $target])]
-          let $other-initial-states := 
-            (: TODO Support initial element too :)
-            for $other-state in $other-states
-            return $other-state/sc:state[@id = $other-state/@initial]
-          
-          return enter-states(($new-state, $other-initial-states), $current-state, $machine, $instance)
+        
+          (:
+          If we're entering this parallel and the instance doesn't have any active states that match those of the child
+          states of the parallel element, we need to initialize an active state for each child state of the parallel element.
+          :)
+          let $active-states := get-active-states($instance)
+          let $entering-parallel := fn:not($active-states = $parallel//(sc:initial|sc:state|sc:final)/@id/fn:string())
+          let $_ := xdmp:trace($TRACE-EVENT, "Entering parallel? " || $entering-parallel)
+
+          return
+            if ($entering-parallel) then           
+              let $other-states := $parallel/sc:state[fn:not(@id = $target) and fn:not(.//sc:state[@id = $target])]
+              let $other-initial-states := 
+                for $other-state in $other-states
+                return $other-state/sc:state[@id = $other-state/@initial]
+              
+              return enter-states(($new-state, $other-initial-states), $current-state, $machine, $instance)
+            else
+              enter-states($new-state, $current-state, $machine, $instance)
           
         else
           enter-states($new-state, $current-state, $machine, $instance)
@@ -115,7 +122,7 @@ declare function enter-states(
   $instance as element(mlsc:instance)
   ) as element(mlsc:instance)
 {
-  xdmp:trace($TRACE-EVENT, ("Entering states for instance " || get-instance-id($instance), $new-states)),
+  xdmp:trace($TRACE-EVENT, "Entering state(s) " || fn:string-join($new-states/@id, ",") || " for instance " || get-instance-id($instance)),
   
   let $datamodel := $instance/sc:datamodel
   
@@ -124,12 +131,17 @@ declare function enter-states(
 
   let $transitions := mlscxp:build-transition($new-states, $current-state, $machine, $instance) 
   
+  let $states-to-retain := $instance/mlsc:active-states/mlsc:active-state[fn:not(. = $current-state/@id)]
+  
   let $new-active-states := 
-    element mlsc:active-states { 
+    element mlsc:active-states {
+      $states-to-retain,
       for $state in $new-states
-      return element mlsc:active-state {fn:string($state/@id)}
+      let $id := fn:string($state/@id)
+      where fn:not($id = $states-to-retain/fn:string())
+      return element mlsc:active-state {$id}
     }
-    
+  
   return element {fn:node-name($instance)} {
     $instance/@*,
     
@@ -231,7 +243,7 @@ declare function get-machine-id($instance as element(mlsc:instance)) as xs:strin
 };
 
 
-declare function get-active-states($instance as element(mlsc:instance)) as xs:string+
+declare function get-active-states($instance as element(mlsc:instance)) as xs:string*
 {
   $instance/mlsc:active-states/mlsc:active-state/fn:string()
 };

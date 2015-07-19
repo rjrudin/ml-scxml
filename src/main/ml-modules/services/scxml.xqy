@@ -32,7 +32,6 @@ declare %rapi:transaction-mode("update") function post(
     else
       instance-to-json(
         mlsc:start(map:get($params, "machineId"))
-        
       )
 };
 

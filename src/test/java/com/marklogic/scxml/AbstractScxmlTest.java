@@ -80,10 +80,13 @@ public abstract class AbstractScxmlTest extends AbstractSpringTest {
         return new Instance(parse(r.asString()));
     }
 
-    protected void assertResponseHasInstanceIdAndState(Response r, String instanceId, String state) {
+    protected void assertResponseHasInstanceIdAndState(Response r, String instanceId, String... states) {
         JsonPath json = r.jsonPath();
         assertEquals(instanceId, json.getString("instanceId"));
-        List<String> states = json.getList("active-states", String.class);
-        assertTrue(format("Did not find expected state %s in active-states: " + states, state), states.contains(state));
+        List<String> stateList = json.getList("active-states", String.class);
+        for (String state : states) {
+            assertTrue(format("Did not find expected state %s in active-states: " + states, state),
+                    stateList.contains(state));
+        }
     }
 }

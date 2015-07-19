@@ -24,6 +24,9 @@ public class Instance extends Fragment {
         for (String state : states) {
             assertActiveState(state);
         }
+        String xpath = "/mlsc:instance/mlsc:active-states/mlsc:active-state[%d]";
+        assertElementExists(format(xpath, states.length));
+        assertElementMissing("Expected " + xpath + " to not exist", format(xpath, states.length + 1));
     }
 
     public void assertDatamodelElementExists(String dataId, String xpath) {
@@ -31,9 +34,15 @@ public class Instance extends Fragment {
         assertElementExists(path);
     }
 
-    public void assertTransitionExists(String fromState, String toState) {
-        assertElementExists(format(
-                "/mlsc:instance/mlsc:transitions/mlsc:transition[mlsc:from/@state = '%s' and mlsc:to/@state = '%s' and @date-time != '']",
-                fromState, toState));
+    public void assertTransitionExists(int position, String fromState, String toState) {
+        if (fromState == null) {
+            assertElementExists(format(
+                    "/mlsc:instance/mlsc:transitions/mlsc:transition[%d][not(mlsc:from) and mlsc:to/@state = '%s' and @date-time != '']",
+                    position, toState));
+        } else {
+            assertElementExists(format(
+                    "/mlsc:instance/mlsc:transitions/mlsc:transition[%d][mlsc:from/@state = '%s' and mlsc:to/@state = '%s' and @date-time != '']",
+                    position, fromState, toState));
+        }
     }
 }

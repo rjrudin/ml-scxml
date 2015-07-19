@@ -41,6 +41,7 @@ declare function handle-event(
   let $machine := mlscxp:find-machine(get-machine-id($instance))
   let $new-instance := mlsc:handle-event($instance, $machine, $event)
   let $_ := xdmp:node-replace($instance, $new-instance)
+  let $_ := xdmp:log(("Persisted instance after event", $new-instance))
   return $new-instance
 };
 
@@ -68,6 +69,5 @@ declare function build-instance-uri($instance-id as xs:string) as xs:string
 
 declare function new-instance-id() as xs:string
 {
-  (: TODO Is this callable without the semantics license? :)
   sem:uuid-string()
 };
