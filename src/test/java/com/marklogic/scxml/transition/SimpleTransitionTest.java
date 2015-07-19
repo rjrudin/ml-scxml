@@ -20,12 +20,12 @@ public class SimpleTransitionTest extends AbstractScxmlTest {
         i.assertActiveState("Open");
         i.assertTransitionExists(1, null, "Open");
 
-        triggerEvent(id, "Start");
+        fireEvent(id, "Start");
         i = loadInstance(id);
         i.assertActiveState("In Progress");
         i.assertTransitionExists(2, "Open", "In Progress");
 
-        triggerEvent(id, "Finish");
+        fireEvent(id, "Finish");
         i = loadInstance(id);
         i.assertActiveState("Closed");
         i.assertTransitionExists(2, "Open", "In Progress");

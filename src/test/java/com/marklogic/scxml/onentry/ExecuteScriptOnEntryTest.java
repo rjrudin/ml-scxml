@@ -13,7 +13,7 @@ public class ExecuteScriptOnEntryTest extends AbstractScxmlTest {
     public void test() {
         String instanceId = startMachineWithId("on-entry-script");
 
-        Response r = triggerEvent(instanceId, "e");
+        Response r = fireEvent(instanceId, "e");
         assertResponseHasInstanceIdAndState(r, instanceId, "s1");
 
         Instance i = loadInstance(instanceId);

@@ -24,21 +24,21 @@ public class ExecuteAssignOnEntryTest extends AbstractScxmlTest {
 
     @Test
     public void executeS1AssignmentOnEntry() {
-        Response r = triggerEvent(instanceId, "e");
+        Response r = fireEvent(instanceId, "e");
         assertResponseHasInstanceIdAndState(r, instanceId, "s1");
         assertStateAndPrices("s1", "10", "0", "0");
     }
 
     @Test
     public void executeS2AssignmentOnEntry() {
-        Response r = triggerEvent(instanceId, "e2");
+        Response r = fireEvent(instanceId, "e2");
         assertResponseHasInstanceIdAndState(r, instanceId, "s2");
         assertStateAndPrices("s2", "0", "20", "0");
     }
 
     @Test
     public void executeS3AssignmentOnEntry() {
-        Response r = triggerEvent(instanceId, "anyEvent");
+        Response r = fireEvent(instanceId, "anyEvent");
         assertResponseHasInstanceIdAndState(r, instanceId, "s3");
         assertStateAndPrices("s3", "0", "0", "30");
     }

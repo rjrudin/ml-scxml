@@ -16,7 +16,7 @@ public class ExecuteOnExitTest extends AbstractScxmlTest {
     public void assignAndScript() {
         String instanceId = startMachineWithId("on-exit-with-assign-and-script");
 
-        Response r = triggerEvent(instanceId, "e");
+        Response r = fireEvent(instanceId, "e");
         assertResponseHasInstanceIdAndState(r, instanceId, "s1");
 
         Instance i = loadInstance(instanceId);
@@ -37,7 +37,7 @@ public class ExecuteOnExitTest extends AbstractScxmlTest {
     public void assignOnExitAndAssignOnEntry() {
         String instanceId = startMachineWithId("on-exit-assign-and-on-entry-assign");
 
-        Response r = triggerEvent(instanceId, "e");
+        Response r = fireEvent(instanceId, "e");
         assertResponseHasInstanceIdAndState(r, instanceId, "s1");
 
         Instance i = loadInstance(instanceId);

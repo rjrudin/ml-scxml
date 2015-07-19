@@ -58,7 +58,7 @@ public abstract class AbstractScxmlTest extends AbstractSpringTest {
         return r.jsonPath().getString("instanceId");
     }
 
-    protected Response triggerEvent(String instanceId, String event) {
+    protected Response fireEvent(String instanceId, String event) {
         return postToService(format("rs:instanceId=%s&rs:event=%s", instanceId, event));
     }
 
