@@ -6,7 +6,9 @@ This library is intended to not perform any persistence operations; it just impl
 
 module namespace mlsc = "http://marklogic.com/scxml";
 
-import module namespace mlscxp = "http://marklogic.com/scxml/extension-points" at "/ext/ml-scxml/extension-points/build-transition.xqy";
+import module namespace mlscxp = "http://marklogic.com/scxml/extension-points" at 
+  "/ext/ml-scxml/extension-points/build-transition.xqy",
+  "/ext/ml-scxml/extension-points/on-event.xqy";
 
 declare namespace sc = "http://www.w3.org/2005/07/scxml";
 
@@ -123,6 +125,13 @@ declare function enter-states(
   ) as element(mlsc:instance)
 {
   xdmp:trace($TRACE-EVENT, "Entering state(s) " || fn:string-join($new-states/@id, ",") || " for instance " || get-instance-id($instance)),
+  
+  for $state in $new-states[self::sc:final]
+  let $event-id := "done.state." || $state/@id
+  return (
+    xdmp:trace($TRACE-EVENT, "Raising event " || $event-id || " for instance " || get-instance-id($instance)),
+    mlscxp:on-event($event-id, $state, $machine, $instance)
+  ),
   
   let $datamodel := $instance/sc:datamodel
   

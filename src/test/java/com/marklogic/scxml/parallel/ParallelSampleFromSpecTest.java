@@ -2,7 +2,9 @@ package com.marklogic.scxml.parallel;
 
 import org.junit.Test;
 
+import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.Response;
+import com.marklogic.junit.Fragment;
 import com.marklogic.scxml.AbstractScxmlTest;
 import com.marklogic.scxml.Instance;
 
@@ -38,5 +40,11 @@ public class ParallelSampleFromSpecTest extends AbstractScxmlTest {
         i3.assertActiveStates("S1Final", "S22");
         i3.assertTransitionExists(3, "S12", "S1Final");
         i3.assertTransitionExists(4, "S21", "S22");
+
+        // As state S1 finished, we expect an event courtesy of the test implementation
+        String xml = RestAssured.get(format("/v1/documents?uri=/ml-scxml/event/%s/done.state.S1Final.xml", instanceId))
+                .asString();
+        Fragment f = parse(xml);
+        f.prettyPrint();
     }
 }
