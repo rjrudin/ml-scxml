@@ -9,6 +9,7 @@ module namespace mlsc = "http://marklogic.com/scxml";
 import module namespace mlscxp = "http://marklogic.com/scxml/extension-points" at 
   "/ext/ml-scxml/extension-points/build-transition.xqy",
   "/ext/ml-scxml/extension-points/on-event.xqy";
+import module namespace session = "http://marklogic.com/scxml/session" at "/ext/ml-scxml/lib/session-lib.xqy";
 
 declare namespace sc = "http://www.w3.org/2005/07/scxml";
 
@@ -36,34 +37,64 @@ declare function start(
     return element sc:datamodel { $data }
   }
   
-  return enter-states($initial-state, (), $machine, $instance)
+  return enter-states($initial-state, (), session:new($instance, $machine, ()))
 };
 
 
+(:
+Starts a new session and processes the given event. 
+:)
 declare function handle-event(
   $instance as element(mlsc:instance),
   $machine as element(sc:scxml),
-  $event as xs:string
+  $event-name as xs:string
   ) as element(mlsc:instance)
 {
-  xdmp:trace($TRACE-EVENT, ("Handling event " || $event || " for instance " || get-instance-id($instance))),
-   
-  let $current-states := $machine//(sc:state|sc:initial)[@id = get-active-states($instance)]
+  let $session := session:new($instance, $machine, $event-name)
   
-  let $_ :=
-    for $current-state in $current-states 
-    let $transition := (
-      $current-state/sc:transition[@event = $event],
-      $current-state/sc:transition[@event = "*"]
-    )[1]
+  return (
+    handle-next-event($session),
+    session:get-instance($session)
+  )
+};
+
+
+(:
+Gets the current event, and if one exists, processes it (which means find all the states that have transitions with
+that event, and execute each matching transition, updating the instance document as we go), then remove the current
+event, then call handle-next-event in case one or more events were added.
+:)
+declare function handle-next-event($session as map:map) as empty-sequence()
+{
+  let $event := session:get-current-event($session)
+  where $event
+  return 
+  
+    let $event-name := $event/name/fn:string()
+    let $instance := session:get-instance($session)
+    let $machine := session:get-machine($session)
     
-    return
-      if (fn:not($transition)) then
-        fn:error(xs:QName("MISSING-TRANSITION"), "Could not find transition for event '" || $event || "'")
-      else 
-        xdmp:set($instance, execute-transition($transition, $current-state, $instance, $machine))
+    let $_ := xdmp:trace($TRACE-EVENT, ("Handling event " || $event-name || " for instance " || get-instance-id($instance)))
   
-  return $instance
+    let $current-states := $machine//(sc:state|sc:initial)[@id = get-active-states($instance)]
+    
+    return (
+      for $current-state in $current-states 
+      let $transition := (
+        $current-state/sc:transition[@event = $event-name],
+        $current-state/sc:transition[@event = "*"]
+      )[1]
+      
+      return
+        if ($transition) then
+          session:set-instance($session, execute-transition($transition, $current-state, $session))
+        else
+          xdmp:trace($TRACE-EVENT, ("Could not find transition for event '" || $event-name || "'")),
+      
+      session:remove-current-event($session),
+      
+      handle-next-event($session)
+    )
 };
 
 
@@ -74,11 +105,13 @@ and things would get very confusing if they weren't.
 declare function execute-transition(
   $transition as element(sc:transition),
   $current-state as element(),
-  $instance as element(mlsc:instance),
-  $machine as element(sc:scxml)
+  $session as map:map
   ) as element(mlsc:instance)
 {
-  xdmp:trace($TRACE-EVENT, ("Executing transition for instance " || get-instance-id($instance), $transition)),
+  let $instance := session:get-instance($session)
+  let $machine := session:get-machine($session)
+  
+  let $_ := xdmp:trace($TRACE-EVENT, ("Executing transition for instance " || get-instance-id($instance), $transition))
   
   let $target := fn:string($transition/@target)
   let $new-state := $machine//(sc:state|sc:final)[@id = $target]
@@ -104,12 +137,12 @@ declare function execute-transition(
                 for $other-state in $other-states
                 return $other-state/sc:state[@id = $other-state/@initial]
               
-              return enter-states(($new-state, $other-initial-states), $current-state, $machine, $instance)
+              return enter-states(($new-state, $other-initial-states), $current-state, $session)
             else
-              enter-states($new-state, $current-state, $machine, $instance)
+              enter-states($new-state, $current-state, $session)
           
         else
-          enter-states($new-state, $current-state, $machine, $instance)
+          enter-states($new-state, $current-state, $session)
           
     else
       (: The spec says to just "discard" the event, but for now, throwing an error to signify an issue :)
@@ -120,18 +153,22 @@ declare function execute-transition(
 declare function enter-states(
   $new-states as element()+,
   $current-state as element()?,
-  $machine as element(sc:scxml), 
-  $instance as element(mlsc:instance)
+  $session as map:map
   ) as element(mlsc:instance)
 {
-  xdmp:trace($TRACE-EVENT, "Entering state(s) " || fn:string-join($new-states/@id, ",") || " for instance " || get-instance-id($instance)),
+  let $instance := session:get-instance($session)
+  let $machine := session:get-machine($session)
   
-  for $state in $new-states[self::sc:final]
-  let $event-id := "done.state." || $state/@id
-  return (
-    xdmp:trace($TRACE-EVENT, "Raising event " || $event-id || " for instance " || get-instance-id($instance)),
-    mlscxp:on-event($event-id, $state, $machine, $instance)
-  ),
+  let $_ := xdmp:trace($TRACE-EVENT, "Entering state(s) " || fn:string-join($new-states/@id, ",") || " for instance " || get-instance-id($instance))
+  
+  let $_ := 
+    for $state in $new-states[self::sc:final]
+    let $event-name := "done.state." || $state/@id
+    return (
+      xdmp:trace($TRACE-EVENT, "Raising event " || $event-name || " for instance " || get-instance-id($instance)),
+      session:add-event($session, $event-name, "internal"),
+      mlscxp:on-event($event-name, $state, $machine, $instance)
+    )
   
   let $datamodel := $instance/sc:datamodel
   

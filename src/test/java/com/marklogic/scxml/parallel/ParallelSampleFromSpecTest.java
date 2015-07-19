@@ -24,27 +24,28 @@ public class ParallelSampleFromSpecTest extends AbstractScxmlTest {
         // Fire event "e"
         Response r = fireEvent(instanceId, "e");
         assertResponseHasInstanceIdAndState(r, instanceId, "S12", "S21");
-        Instance i2 = loadInstance(instanceId);
-        i2.assertActiveStates("S12", "S21");
-        i2.assertTransitionExists(2, "first", "S12");
-        i2.assertTransitionExists(2, "first", "S21");
+        i = loadInstance(instanceId);
+        i.assertActiveStates("S12", "S21");
+        i.assertTransitionExists(2, "first", "S12");
+        i.assertTransitionExists(2, "first", "S21");
 
         // Fire event "e1"
-        /**
-         * I'm not sure how to handle this. S1Final is a final state, but it seems to me that we'd want to track each
-         * state that the statechart is currently "in". So the term "active states" may be misleading, but just calling
-         * them "states" doesn't seem great either.
-         */
+        // TODO The term "active states" is misleading because S1Final is a final state
         fireEvent(instanceId, "e1");
-        Instance i3 = loadInstance(instanceId);
-        i3.assertActiveStates("S1Final", "S22");
-        i3.assertTransitionExists(3, "S12", "S1Final");
-        i3.assertTransitionExists(4, "S21", "S22");
+        i = loadInstance(instanceId);
+        i.assertActiveStates("S1Final", "S22");
+        i.assertTransitionExists(3, "S12", "S1Final");
+        i.assertTransitionExists(4, "S21", "S22");
 
         // As state S1 finished, we expect an event courtesy of the test implementation
         String xml = RestAssured.get(format("/v1/documents?uri=/ml-scxml/event/%s/done.state.S1Final.xml", instanceId))
                 .asString();
         Fragment f = parse(xml);
-        f.prettyPrint();
+        f.assertElementExists("/mlsc:test-event[. = 'done.state.S1Final']");
+        
+        // Fire event "e2"
+        r = fireEvent(instanceId, "e2");
+        i = loadInstance(instanceId);
+        //i.assertActiveStates("final");
     }
 }

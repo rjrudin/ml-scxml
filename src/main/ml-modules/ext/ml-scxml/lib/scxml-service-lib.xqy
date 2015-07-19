@@ -34,14 +34,13 @@ Trigger the given event on the instance with the given ID. Returns the updated i
 :)
 declare function handle-event(
   $instance-id as xs:string,
-  $event as xs:string
+  $event-name as xs:string
   ) as element(mlsc:instance)
 {
   let $instance := get-instance($instance-id)
   let $machine := mlscxp:find-machine(get-machine-id($instance))
-  let $new-instance := mlsc:handle-event($instance, $machine, $event)
+  let $new-instance := mlsc:handle-event($instance, $machine, $event-name)
   let $_ := xdmp:node-replace($instance, $new-instance)
-  let $_ := xdmp:log(("Persisted instance after event", $new-instance))
   return $new-instance
 };
 

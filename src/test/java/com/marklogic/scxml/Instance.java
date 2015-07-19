@@ -45,4 +45,10 @@ public class Instance extends Fragment {
                     position, fromState, toState));
         }
     }
+
+    public void assertTransitionCount(String message, int count) {
+        String xpath = "/mlsc:instance/mlsc:transitions/mlsc:transition[%d]";
+        assertElementExists(message, format(xpath, count));
+        assertElementMissing(message, format(xpath, count + 1));
+    }
 }

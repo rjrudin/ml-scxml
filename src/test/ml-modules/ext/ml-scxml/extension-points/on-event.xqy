@@ -19,7 +19,7 @@ declare function on-event(
 {
   xdmp:document-insert(
     "/ml-scxml/event/" || mlsc:get-instance-id($instance) || "/" || $event-id || ".xml", 
-    <helloWorld/>,
+    <mlsc:test-event>{$event-id}</mlsc:test-event>,
     (xdmp:permission("rest-reader", "read"), xdmp:permission("rest-writer", "update"))
   )
 };
