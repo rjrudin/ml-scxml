@@ -4,7 +4,6 @@ import org.junit.Test;
 
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.response.Response;
-import com.marklogic.junit.Fragment;
 import com.marklogic.scxml.AbstractScxmlTest;
 import com.marklogic.scxml.Instance;
 
@@ -38,14 +37,18 @@ public class ParallelSampleFromSpecTest extends AbstractScxmlTest {
         i.assertTransitionExists(4, "S21", "S22");
 
         // As state S1 finished, we expect an event courtesy of the test implementation
-        String xml = RestAssured.get(format("/v1/documents?uri=/ml-scxml/event/%s/done.state.S1Final.xml", instanceId))
+        String xml = RestAssured.get(format("/v1/documents?uri=/ml-scxml/event/%s/done.state.S1.xml", instanceId))
                 .asString();
-        Fragment f = parse(xml);
-        f.assertElementExists("/mlsc:test-event[. = 'done.state.S1Final']");
-        
+        parse(xml).assertElementExists("/mlsc:test-event[. = 'done.state.S1']");
+
         // Fire event "e2"
         r = fireEvent(instanceId, "e2");
         i = loadInstance(instanceId);
         //i.assertActiveStates("final");
+
+        i.prettyPrint();
+
+        xml = RestAssured.get(format("/v1/documents?uri=/ml-scxml/event/%s/done.state.S2.xml", instanceId)).asString();
+        parse(xml).assertElementExists("/mlsc:test-event[. = 'done.state.S2']");
     }
 }

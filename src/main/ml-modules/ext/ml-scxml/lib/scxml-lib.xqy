@@ -89,7 +89,7 @@ declare function handle-next-event($session as map:map) as empty-sequence()
         if ($transition) then
           session:set-instance($session, execute-transition($transition, $current-state, $session))
         else
-          xdmp:trace($TRACE-EVENT, ("Could not find transition for event '" || $event-name || "'")),
+          xdmp:trace($TRACE-EVENT, ("Discarding event '" || $event-name || "'; could not find transition for it")),
       
       session:remove-current-event($session),
       
@@ -162,13 +162,17 @@ declare function enter-states(
   let $_ := xdmp:trace($TRACE-EVENT, "Entering state(s) " || fn:string-join($new-states/@id, ",") || " for instance " || get-instance-id($instance))
   
   let $_ := 
+    (: According to the example in 3.1.3 of the spec, we raise an event for the parent state when we reach the final child state :)
     for $state in $new-states[self::sc:final]
-    let $event-name := "done.state." || $state/@id
-    return (
-      xdmp:trace($TRACE-EVENT, "Raising event " || $event-name || " for instance " || get-instance-id($instance)),
-      session:add-event($session, $event-name, "internal"),
-      mlscxp:on-event($event-name, $state, $machine, $instance)
-    )
+    let $parent := $state/..[self::sc:state]
+    where $parent
+    return 
+      let $event-name := "done.state." || $parent/@id
+      return (
+        xdmp:trace($TRACE-EVENT, "Raising event " || $event-name || " for instance " || get-instance-id($instance)),
+        session:add-event($session, $event-name, "internal"),
+        mlscxp:on-event($event-name, $state, $machine, $instance)
+      )
   
   let $datamodel := $instance/sc:datamodel
   
