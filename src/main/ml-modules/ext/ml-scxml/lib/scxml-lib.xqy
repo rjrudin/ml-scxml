@@ -76,7 +76,7 @@ declare function handle-next-event($session as map:map) as empty-sequence()
     
     let $_ := xdmp:trace($TRACE-EVENT, ("Handling event " || $event-name || " for instance " || get-instance-id($instance)))
   
-    let $current-states := $machine//(sc:state|sc:initial)[@id = get-active-states($instance)]
+    let $current-states := $machine//(sc:state|sc:initial|sc:parallel)[@id = get-active-states($instance)]
     
     return (
       for $current-state in $current-states 
@@ -125,6 +125,7 @@ declare function execute-transition(
           (:
           If we're entering this parallel and the instance doesn't have any active states that match those of the child
           states of the parallel element, we need to initialize an active state for each child state of the parallel element.
+          And we add the id of the parallel as an active state as well.
           :)
           let $active-states := get-active-states($instance)
           let $entering-parallel := fn:not($active-states = $parallel//(sc:initial|sc:state|sc:final)/@id/fn:string())
@@ -137,7 +138,7 @@ declare function execute-transition(
                 for $other-state in $other-states
                 return $other-state/sc:state[@id = $other-state/@initial]
               
-              return enter-states(($new-state, $other-initial-states), $current-state, $session)
+              return enter-states(($parallel, $new-state, $other-initial-states), $current-state, $session)
             else
               enter-states($new-state, $current-state, $session)
           
@@ -171,7 +172,26 @@ declare function enter-states(
       return (
         xdmp:trace($TRACE-EVENT, "Raising event " || $event-name || " for instance " || get-instance-id($instance)),
         session:add-event($session, $event-name, "internal"),
-        mlscxp:on-event($event-name, $state, $machine, $instance)
+        mlscxp:on-event($event-name, $state, $machine, $instance),
+        
+        (: If this is part of a parallel, and all other parts are final, then raise an event for the parallel too :)
+        let $parallel := $parent/..[self::sc:parallel]
+        where $parallel
+        return
+          let $final-state-ids := $parallel/sc:state/sc:final/@id/fn:string
+          let $active-states := $instance/mlsc:active-states/mlsc:active-state/fn:string()
+          let $unfinished-state-ids := 
+            for $state-id in $final-state-ids
+            where fn:not($state-id = ($active-states, $parent/@id))
+            return $state-id
+          where fn:not($unfinished-state-ids)
+          return
+            let $event-name := "done.state." || $parallel/@id
+            return (
+              xdmp:trace($TRACE-EVENT, "Raising event " || $event-name || " for instance " || get-instance-id($instance)),
+              session:add-event($session, $event-name, "internal"),
+              mlscxp:on-event($event-name, $state, $machine, $instance)
+            )
       )
   
   let $datamodel := $instance/sc:datamodel

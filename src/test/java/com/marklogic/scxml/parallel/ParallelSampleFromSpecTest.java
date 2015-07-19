@@ -24,7 +24,8 @@ public class ParallelSampleFromSpecTest extends AbstractScxmlTest {
         Response r = fireEvent(instanceId, "e");
         assertResponseHasInstanceIdAndState(r, instanceId, "S12", "S21");
         i = loadInstance(instanceId);
-        i.assertActiveStates("S12", "S21");
+        i.assertActiveStates("p", "S12", "S21");
+        i.assertTransitionExists(2, "first", "p");
         i.assertTransitionExists(2, "first", "S12");
         i.assertTransitionExists(2, "first", "S21");
 
@@ -32,7 +33,7 @@ public class ParallelSampleFromSpecTest extends AbstractScxmlTest {
         // TODO The term "active states" is misleading because S1Final is a final state
         fireEvent(instanceId, "e1");
         i = loadInstance(instanceId);
-        i.assertActiveStates("S1Final", "S22");
+        i.assertActiveStates("p", "S1Final", "S22");
         i.assertTransitionExists(3, "S12", "S1Final");
         i.assertTransitionExists(4, "S21", "S22");
 
@@ -43,12 +44,12 @@ public class ParallelSampleFromSpecTest extends AbstractScxmlTest {
 
         // Fire event "e2"
         r = fireEvent(instanceId, "e2");
-        i = loadInstance(instanceId);
-        //i.assertActiveStates("final");
-
-        i.prettyPrint();
 
         xml = RestAssured.get(format("/v1/documents?uri=/ml-scxml/event/%s/done.state.S2.xml", instanceId)).asString();
         parse(xml).assertElementExists("/mlsc:test-event[. = 'done.state.S2']");
+
+        i = loadInstance(instanceId);
+        i.assertActiveStates("final");
+        i.prettyPrint();
     }
 }
