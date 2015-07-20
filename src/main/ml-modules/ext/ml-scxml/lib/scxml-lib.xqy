@@ -156,16 +156,54 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
 };
 
 
-(:
-This implementation assumes that initial/state/final IDs are unique. I can't think of a good reason for them not to be,
-and things would get very confusing if they weren't.
+declare function find-lcca($states as element()+)
+{
+  let $common-ancestors := $states[1]/ancestor::sc:state/@id/fn:string()
+  
+  let $_ := 
+    for $state in $states[2 to fn:last()]
+    let $these-ancestor-ids := $state/ancestor::sc:state/@id/fn:string()
+    return xdmp:set($common-ancestors, $these-ancestor-ids[. = $common-ancestors])
+  
+  return (
+    $common-ancestors[fn:last()],
+    $states[1]/ancestor::sc:scxml/@id/fn:string()
+  )[1]
+};
 
+(:
 So when we execute a transition, we first need to determine all the states that are exited and all the states that will
-be entered. And then we fire the
-onExit block for each of those. Then we remove each of those states from the set of active states on the instance. 
+be entered. And then we fire the onExit block for each of those. Then we remove each of those states from the set of active states on the instance. 
 Then we fire the executable content for each transition. And then we enter each of the new states, adding them to the
 instance, and invoking onEntry for each of them.
+
+TODO A transition can also be on a parallel element.
+TODO A transition can have multiple target states.
+
+"1) if any <parallel> element is a member of the set, any of its children that are not members of the set must be added "
+"2) if any compound <state> is in the set and none of its children is in the set, its default initial state(s) are added to the set"
+"Any state whose child(ren) are added to the complete target set by clause 2 is called a default entry state"
 :)
+declare private function new-exec(
+  $transition as element(sc:transition),
+  $source-state as element(),
+  $session as map:map
+  )
+{
+  let $instance := session:get-instance($session)
+  let $machine := session:get-machine($session)
+  
+  let $_ := xdmp:trace($TRACE-EVENT, ("Executing transition for instance " || get-instance-id($instance), $transition))
+  
+  let $target := fn:string($transition/@target)
+  let $target-state := $machine//(sc:state|sc:final)[@id = $target]
+  
+  (: Now we need to figure out which states that we leave, and in what order, as that's important for onExit reasons :)
+  
+  return ()
+};
+
+
 declare private function execute-transition(
   $transition as element(sc:transition),
   $current-state as element(),
