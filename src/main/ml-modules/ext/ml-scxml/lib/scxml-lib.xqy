@@ -156,7 +156,7 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
 };
 
 
-declare function find-lcca($states as element()+)
+declare function find-lcca-state($states as element()+)
 {
   let $common-ancestors := $states[1]/ancestor::sc:state/@id/fn:string()
   
@@ -166,8 +166,8 @@ declare function find-lcca($states as element()+)
     return xdmp:set($common-ancestors, $these-ancestor-ids[. = $common-ancestors])
   
   return (
-    $common-ancestors[fn:last()],
-    $states[1]/ancestor::sc:scxml/@id/fn:string()
+    $states[1]/ancestor::sc:state[@id = $common-ancestors[fn:last()]],
+    $states[1]/ancestor::sc:scxml
   )[1]
 };
 
@@ -198,11 +198,26 @@ declare private function new-exec(
   let $target := fn:string($transition/@target)
   let $target-state := $machine//(sc:state|sc:final)[@id = $target]
   
-  (: Now we need to figure out which states that we leave, and in what order, as that's important for onExit reasons :)
+  (: 
+  Now we need to figure out which states that we leave, and in what order, as that's important for onExit reasons.
+  TODO Assuming external for now, need to implement internal as well.
+  :)
+  
+  let $states-to-exit := ($source-state, $source-state//sc:state)
   
   return ()
 };
 
+declare function find-states-to-enter($source-state, $target-state)
+{
+  $target-state,
+  let $lcca := find-lcca-state(($source-state, $target-state))
+  let $target-parent := $lcca/sc:state[.//sc:state/@id = $target-state/@id]
+  return (
+    $target-parent,
+    $target-parent//sc:state[fn:exists(.//sc:state[@id = $target-state/@id])]
+  )
+};
 
 declare private function execute-transition(
   $transition as element(sc:transition),
