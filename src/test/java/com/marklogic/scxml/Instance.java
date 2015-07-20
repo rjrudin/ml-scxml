@@ -34,15 +34,25 @@ public class Instance extends Fragment {
         assertElementExists(path);
     }
 
-    public void assertTransitionExists(int position, String fromState, String toState) {
-        if (fromState == null) {
+    /**
+     * This is for transitions that occur when a state machine starts up, where there is no from state yet.
+     * 
+     * @param position
+     * @param toState
+     */
+    public void assertTransitionExists(int position, String toState) {
+        assertTransitionExists(position, null, null, toState);
+    }
+
+    public void assertTransitionExists(int position, String event, String fromState, String toState) {
+        if (fromState == null || event == null) {
             assertElementExists(format(
                     "/mlsc:instance/mlsc:transitions/mlsc:transition[%d][not(mlsc:from) and mlsc:to/@state = '%s' and @date-time != '']",
                     position, toState));
         } else {
             assertElementExists(format(
-                    "/mlsc:instance/mlsc:transitions/mlsc:transition[%d][mlsc:from/@state = '%s' and mlsc:to/@state = '%s' and @date-time != '']",
-                    position, fromState, toState));
+                    "/mlsc:instance/mlsc:transitions/mlsc:transition[%d][@event = '%s' and @date-time != '' and mlsc:from/@state = '%s' and mlsc:to/@state = '%s']",
+                    position, event, fromState, toState));
         }
     }
 

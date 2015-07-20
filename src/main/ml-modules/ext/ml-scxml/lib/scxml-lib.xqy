@@ -6,9 +6,7 @@ This library is intended to not perform any persistence operations; it just impl
 
 module namespace mlsc = "http://marklogic.com/scxml";
 
-import module namespace mlscxp = "http://marklogic.com/scxml/extension-points" at 
-  "/ext/ml-scxml/extension-points/build-transition.xqy",
-  "/ext/ml-scxml/extension-points/on-event.xqy";
+import module namespace mlscxp = "http://marklogic.com/scxml/extension-points" at "/ext/ml-scxml/extension-points/build-transition.xqy";
 import module namespace session = "http://marklogic.com/scxml/session" at "/ext/ml-scxml/lib/session-lib.xqy";
 
 declare namespace sc = "http://www.w3.org/2005/07/scxml";
@@ -37,7 +35,7 @@ declare function start(
     return element sc:datamodel { $data }
   }
   
-  return enter-states($initial-state, (), session:new($instance, $machine, ()))
+  return enter-states($initial-state, (), (), session:new($instance, $machine, ()))
 };
 
 
@@ -64,7 +62,7 @@ Gets the current event, and if one exists, processes it (which means find all th
 that event, and execute each matching transition, updating the instance document as we go), then remove the current
 event, then call handle-next-event in case one or more events were added.
 :)
-declare function handle-next-event($session as map:map) as empty-sequence()
+declare private function handle-next-event($session as map:map) as empty-sequence()
 {
   let $event := session:get-current-event($session)
   where $event
@@ -79,17 +77,20 @@ declare function handle-next-event($session as map:map) as empty-sequence()
     let $current-states := $machine//(sc:state|sc:initial|sc:parallel)[@id = get-active-states($instance)]
     
     return (
-      for $current-state in $current-states 
-      let $transition := (
-        $current-state/sc:transition[@event = $event-name],
-        $current-state/sc:transition[@event = "*"]
-      )[1]
+      let $executed-transitions := 
+        for $current-state in $current-states 
+        let $transition := (
+          $current-state/sc:transition[@event = $event-name],
+          $current-state/sc:transition[@event = "*"]
+        )[1]
+        where $transition
+        return (
+          session:set-instance($session, execute-transition($transition, $current-state, $session)),
+          $transition
+        )
       
-      return
-        if ($transition) then
-          session:set-instance($session, execute-transition($transition, $current-state, $session))
-        else
-          xdmp:trace($TRACE-EVENT, ("Discarding event '" || $event-name || "'; could not find transition for it")),
+      where fn:not($executed-transitions)
+      return xdmp:trace($TRACE-EVENT, ("Discarding event '" || $event-name || "'; could not find transition for it")),
       
       session:remove-current-event($session),
       
@@ -102,7 +103,7 @@ declare function handle-next-event($session as map:map) as empty-sequence()
 This implementation assumes that initial/state/final IDs are unique. I can't think of a good reason for them not to be,
 and things would get very confusing if they weren't.
 :)
-declare function execute-transition(
+declare private function execute-transition(
   $transition as element(sc:transition),
   $current-state as element(),
   $session as map:map
@@ -138,12 +139,12 @@ declare function execute-transition(
                 for $other-state in $other-states
                 return $other-state/sc:state[@id = $other-state/@initial]
               
-              return enter-states(($parallel, $new-state, $other-initial-states), $current-state, $session)
+              return enter-states(($parallel, $new-state, $other-initial-states), $current-state, $transition, $session)
             else
-              enter-states($new-state, $current-state, $session)
+              enter-states($new-state, $current-state, $transition, $session)
           
         else
-          enter-states($new-state, $current-state, $session)
+          enter-states($new-state, $current-state, $transition, $session)
           
     else
       (: The spec says to just "discard" the event, but for now, throwing an error to signify an issue :)
@@ -151,9 +152,10 @@ declare function execute-transition(
 };
 
 
-declare function enter-states(
+declare private function enter-states(
   $new-states as element()+,
   $current-state as element()?,
+  $transition as element(sc:transition)?,
   $session as map:map
   ) as element(mlsc:instance)
 {
@@ -162,35 +164,38 @@ declare function enter-states(
   
   let $_ := xdmp:trace($TRACE-EVENT, "Entering state(s) " || fn:string-join($new-states/@id, ",") || " for instance " || get-instance-id($instance))
   
-  let $_ := 
+  let $states-to-remove := 
     (: According to the example in 3.1.3 of the spec, we raise an event for the parent state when we reach the final child state :)
-    for $state in $new-states[self::sc:final]
-    let $parent := $state/..[self::sc:state]
+    for $final-state in $new-states[self::sc:final]
+    let $parent := $final-state/..[self::sc:state]
     where $parent
     return 
-      let $event-name := "done.state." || $parent/@id
+      let $parent-event-name := "done.state." || $parent/@id
       return (
-        xdmp:trace($TRACE-EVENT, "Raising event " || $event-name || " for instance " || get-instance-id($instance)),
-        session:add-event($session, $event-name, "internal"),
-        mlscxp:on-event($event-name, $state, $machine, $instance),
+        xdmp:trace($TRACE-EVENT, "Raising event " || $parent-event-name || " for instance " || get-instance-id($instance)),
+        session:add-event($session, $parent-event-name, "internal"),
         
         (: If this is part of a parallel, and all other parts are final, then raise an event for the parallel too :)
         let $parallel := $parent/..[self::sc:parallel]
         where $parallel
         return
-          let $final-state-ids := $parallel/sc:state/sc:final/@id/fn:string
+        
+          let $final-state-ids := $parallel/sc:state/sc:final/@id/fn:string()
           let $active-states := $instance/mlsc:active-states/mlsc:active-state/fn:string()
+          let $current-final-id := fn:string($final-state/@id)
           let $unfinished-state-ids := 
             for $state-id in $final-state-ids
-            where fn:not($state-id = ($active-states, $parent/@id))
+            where fn:not($state-id = ($active-states, $current-final-id))
             return $state-id
+          
           where fn:not($unfinished-state-ids)
           return
-            let $event-name := "done.state." || $parallel/@id
+            (: When we close out a parallel, we need to remove the child final IDs from the set of active states :) 
+            let $parallel-event-name := "done.state." || $parallel/@id
             return (
-              xdmp:trace($TRACE-EVENT, "Raising event " || $event-name || " for instance " || get-instance-id($instance)),
-              session:add-event($session, $event-name, "internal"),
-              mlscxp:on-event($event-name, $state, $machine, $instance)
+              xdmp:trace($TRACE-EVENT, "Raising event " || $parallel-event-name || " for instance " || get-instance-id($instance)),
+              session:add-event($session, $parallel-event-name, "internal"),
+              $final-state-ids
             )
       )
   
@@ -199,16 +204,16 @@ declare function enter-states(
   let $datamodel := execute-executable-content($current-state/sc:onexit/element(), $datamodel)
   let $datamodel := execute-executable-content($new-states/sc:onentry/element(), $datamodel)
 
-  let $transitions := mlscxp:build-transition($new-states, $current-state, $machine, $instance) 
+  let $transitions := mlscxp:build-transition($new-states, $current-state, $transition, $session) 
   
-  let $states-to-retain := $instance/mlsc:active-states/mlsc:active-state[fn:not(. = $current-state/@id)]
+  let $states-to-retain := $instance/mlsc:active-states/mlsc:active-state[fn:not(. = $current-state/@id) and fn:not(. = $states-to-remove)]
   
   let $new-active-states := 
     element mlsc:active-states {
       $states-to-retain,
       for $state in $new-states
       let $id := fn:string($state/@id)
-      where fn:not($id = $states-to-retain/fn:string())
+      where fn:not($id = $states-to-retain/fn:string()) and fn:not($id = $states-to-remove)
       return element mlsc:active-state {$id}
     }
   
@@ -233,7 +238,7 @@ declare function enter-states(
 };
 
 
-declare function execute-executable-content(
+declare private function execute-executable-content(
   $executable-content-elements as element()*,
   $datamodel as element(sc:datamodel)
   ) as element(sc:datamodel)
@@ -254,7 +259,7 @@ declare function execute-executable-content(
 Using XSLT to transform the datamodel based on the location and expression in the assign block. Don't yet know a way to
 do this in just XQuery.
 :)
-declare function execute-assign(
+declare private function execute-assign(
   $assign as element(sc:assign),
   $datamodel as element(sc:datamodel)
   ) as element(sc:datamodel)
@@ -289,7 +294,7 @@ The spec at http://www.w3.org/TR/scxml/#script allows for either a src attribute
 to specify a module, its namespace, and a function name in a src attribute seems awkward, so for now, just supporting 
 a text node, which is intended to be xdmp:eval'ed.
 :)
-declare function execute-script(
+declare private function execute-script(
   $script as element(sc:script),
   $datamodel as element(sc:datamodel)
   ) as element(sc:datamodel)
