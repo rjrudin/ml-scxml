@@ -2,16 +2,16 @@ xquery version "1.0-ml";
 
 module namespace test = "urn:testapp";
 
-declare namespace mlsc = "http://marklogic.com/scxml";
+import module namespace mlsc = "http://marklogic.com/scxml" at "/ext/ml-scxml/lib/scxml-lib.xqy";
+import module namespace session = "http://marklogic.com/scxml/session" at "/ext/ml-scxml/lib/session-lib.xqy";
+
 declare namespace sc = "http://www.w3.org/2005/07/scxml";
 
 (:
-This shows an example of modifying the datamodel element, which ml-scxml will then toss back into the instance
-document. And we insert a test document as well. 
-
-TODO May expand this signature - perhaps take a map so anything can be tossed into it. Like a $context map.
+This shows an example of modifying the datamodel element in the instance document in the session map. And we insert
+a test document for good measure too.
 :)
-declare function update($datamodel as element(sc:datamodel)) as element(sc:datamodel)
+declare function update($session as map:map) as empty-sequence()
 {
   xdmp:log("ml-scxml test update function called"),
   
@@ -19,7 +19,10 @@ declare function update($datamodel as element(sc:datamodel)) as element(sc:datam
     (xdmp:permission("rest-reader", "read"), xdmp:permission("rest-writer", "update"))
   ),
   
-  element sc:datamodel {
+  let $instance := session:get-instance($session)
+  let $datamodel := mlsc:get-datamodel($instance)
+  
+  let $new-datamodel := element sc:datamodel {
     for $data in $datamodel/sc:data
     return element sc:data {
       $data/@*,
@@ -29,4 +32,9 @@ declare function update($datamodel as element(sc:datamodel)) as element(sc:datam
       else ()  
     }
   }
+  
+  return session:set-instance(
+    $session,
+    mlsc:rebuild-with-new-datamodel($instance, $new-datamodel)
+  )
 };

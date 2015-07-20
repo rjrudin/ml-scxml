@@ -12,8 +12,8 @@
       <script>
       <![CDATA[
         import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
-        declare variable $datamodel external;
-        lib:update($datamodel)
+        declare variable $session external;
+        lib:update($session)
       ]]>
       </script>
     </onentry>

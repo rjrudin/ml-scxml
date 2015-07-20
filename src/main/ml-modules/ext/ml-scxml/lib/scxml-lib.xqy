@@ -13,6 +13,7 @@ declare namespace sc = "http://www.w3.org/2005/07/scxml";
 
 declare variable $TRACE-EVENT := "ml-scxml";
 
+
 declare function start(
   $machine-id as xs:string,
   $machine as element(sc:scxml),
@@ -57,6 +58,45 @@ declare function handle-event(
 };
 
 
+declare function get-instance-id($instance as element(mlsc:instance)) as xs:string
+{
+  $instance/mlsc:instance-id/fn:string()
+};
+
+
+declare function get-machine-id($instance as element(mlsc:instance)) as xs:string
+{
+  $instance/mlsc:machine-id/fn:string()
+};
+
+
+declare function get-active-states($instance as element(mlsc:instance)) as xs:string*
+{
+  $instance/mlsc:active-states/mlsc:active-state/fn:string()
+};
+
+
+declare function get-datamodel($instance as element(mlsc:instance)) as element(sc:datamodel)?
+{
+  $instance/sc:datamodel
+};
+
+
+declare function rebuild-with-new-datamodel(
+  $instance as element(mlsc:instance),
+  $new-datamodel as element(sc:datamodel)
+  ) as element(mlsc:instance)
+{
+  element mlsc:instance {
+    $instance/@*,
+    for $kid in $instance/node()
+    return
+      if ($kid instance of element(sc:datamodel)) then $new-datamodel
+      else $kid
+  }
+};
+
+
 (:
 Gets the current event, and if one exists, processes it (which means find all the states that have transitions with
 that event, and execute each matching transition, updating the instance document as we go), then remove the current
@@ -72,7 +112,7 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
     let $instance := session:get-instance($session)
     let $machine := session:get-machine($session)
     
-    let $_ := xdmp:trace($TRACE-EVENT, ("Handling event " || $event-name || " for instance " || get-instance-id($instance)))
+    let $_ := xdmp:trace($TRACE-EVENT, ("Handling event '" || $event-name || "' for instance " || get-instance-id($instance)))
   
     let $current-states := $machine//(sc:state|sc:initial|sc:parallel)[@id = get-active-states($instance)]
     
@@ -162,7 +202,7 @@ declare private function enter-states(
   let $instance := session:get-instance($session)
   let $machine := session:get-machine($session)
   
-  let $_ := xdmp:trace($TRACE-EVENT, "Entering state(s) " || fn:string-join($new-states/@id, ",") || " for instance " || get-instance-id($instance))
+  let $_ := xdmp:trace($TRACE-EVENT, "Entering state(s) '" || fn:string-join($new-states/@id, ",") || "' for instance " || get-instance-id($instance))
   
   let $states-to-remove := 
     (: According to the example in 3.1.3 of the spec, we raise an event for the parent state when we reach the final child state :)
@@ -199,13 +239,6 @@ declare private function enter-states(
             )
       )
   
-  let $datamodel := $instance/sc:datamodel
-  
-  let $datamodel := execute-executable-content($current-state/sc:onexit/element(), $datamodel)
-  let $datamodel := execute-executable-content($new-states/sc:onentry/element(), $datamodel)
-
-  let $transitions := mlscxp:build-transition($new-states, $current-state, $transition, $session) 
-  
   let $states-to-retain := $instance/mlsc:active-states/mlsc:active-state[fn:not(. = $current-state/@id) and fn:not(. = $states-to-remove)]
   
   let $new-active-states := 
@@ -217,13 +250,19 @@ declare private function enter-states(
       return element mlsc:active-state {$id}
     }
   
+  let $transitions := mlscxp:build-transition($new-states, $current-state, $transition, $session) 
+  
+  (: TODO Fix this order; should be onexit, transition, onentry :)
+  let $_ := execute-executable-content($current-state/sc:onexit/element(), $session)
+  let $_ := execute-executable-content($new-states/sc:onentry/element(), $session)
+  let $instance := session:get-instance($session)
+  
   return element {fn:node-name($instance)} {
     $instance/@*,
     
     for $kid in $instance/element()
     return typeswitch($kid)
       case element(mlsc:active-states) return $new-active-states
-      case element(sc:datamodel) return $datamodel
       case element(mlsc:transitions) return 
         element mlsc:transitions {
           $kid/*,
@@ -240,18 +279,18 @@ declare private function enter-states(
 
 declare private function execute-executable-content(
   $executable-content-elements as element()*,
-  $datamodel as element(sc:datamodel)
-  ) as element(sc:datamodel)
+  $session as map:map
+  ) as empty-sequence()
 {
   let $_ := 
     for $el in $executable-content-elements
     return typeswitch ($el)
       case element(sc:log) return xdmp:log(xdmp:eval($el/@expr))
-      case element(sc:assign) return xdmp:set($datamodel, execute-assign($el, $datamodel))
-      case element(sc:script) return xdmp:set($datamodel, execute-script($el, $datamodel))
+      case element(sc:assign) return execute-assign($el, $session)
+      case element(sc:script) return execute-script($el, $session)
       default return ()
   
-  return $datamodel
+  return ()
 };
 
 
@@ -261,8 +300,8 @@ do this in just XQuery.
 :)
 declare private function execute-assign(
   $assign as element(sc:assign),
-  $datamodel as element(sc:datamodel)
-  ) as element(sc:datamodel)
+  $session as map:map
+  ) as empty-sequence()
 {
   let $location := $assign/@location/fn:string()
   let $data-id := fn:substring(fn:tokenize($location, "/")[1], 2)
@@ -285,7 +324,13 @@ declare private function execute-assign(
       </xsl:template>
     </xsl:stylesheet>
   
-  return xdmp:xslt-eval($stylesheet, $datamodel)/sc:datamodel
+  let $instance := session:get-instance($session)
+  let $datamodel := get-datamodel($instance)
+  let $new-datamodel := xdmp:xslt-eval($stylesheet, $datamodel)/sc:datamodel
+  return session:set-instance(
+    $session,
+    rebuild-with-new-datamodel($instance, $new-datamodel)
+  )
 };
 
 
@@ -296,29 +341,13 @@ a text node, which is intended to be xdmp:eval'ed.
 :)
 declare private function execute-script(
   $script as element(sc:script),
-  $datamodel as element(sc:datamodel)
-  ) as element(sc:datamodel)
+  $session as map:map
+  ) as empty-sequence()
 {
   xdmp:eval(
     fn:string($script), 
-    (xs:QName("datamodel"), $datamodel)
+    (xs:QName("session"), $session)
   )
 };
 
 
-declare function get-instance-id($instance as element(mlsc:instance)) as xs:string
-{
-  $instance/mlsc:instance-id/fn:string()
-};
-
-
-declare function get-machine-id($instance as element(mlsc:instance)) as xs:string
-{
-  $instance/mlsc:machine-id/fn:string()
-};
-
-
-declare function get-active-states($instance as element(mlsc:instance)) as xs:string*
-{
-  $instance/mlsc:active-states/mlsc:active-state/fn:string()
-};
