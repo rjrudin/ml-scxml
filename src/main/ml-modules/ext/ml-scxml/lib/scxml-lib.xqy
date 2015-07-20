@@ -22,13 +22,19 @@ declare function start(
 {
   let $initial-state := ($machine/sc:initial, $machine/(sc:state|sc:final)[@id = $machine/@initial], $machine/sc:state[1])[1]
   let $_ := xdmp:trace($TRACE-EVENT, "Starting machine with id " || $machine-id || " and initial state " || $initial-state/@id)
-  
+
+  let $active-states := (
+    $initial-state/@id/fn:string(),
+    enter-initial-states($initial-state)
+  )
+   
   let $instance := element mlsc:instance {
     attribute created-date-time {fn:current-dateTime()},
     element mlsc:machine-id {$machine-id},
     element mlsc:instance-id {$instance-id},
     element mlsc:active-states {
-      element mlsc:active-state {$initial-state/@id/fn:string()}
+      for $state in $active-states
+      return element mlsc:active-state {$state}
     },
     
     let $data := $machine//sc:datamodel/sc:data
@@ -39,6 +45,17 @@ declare function start(
   return enter-states($initial-state, (), (), session:new($instance, $machine, ()))
 };
 
+
+declare private function enter-initial-states($state as element()) as xs:string*
+{
+  let $initial := $state/@initial/fn:string()
+  let $child-state := $state/element()[@id = $initial]
+  where $initial and $child-state
+  return (
+    $child-state/@id/fn:string(),
+    enter-initial-states($child-state)
+  )
+};
 
 (:
 Starts a new session and processes the given event. 
@@ -142,6 +159,12 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
 (:
 This implementation assumes that initial/state/final IDs are unique. I can't think of a good reason for them not to be,
 and things would get very confusing if they weren't.
+
+So when we execute a transition, we first need to determine all the states that are exited and all the states that will
+be entered. And then we fire the
+onExit block for each of those. Then we remove each of those states from the set of active states on the instance. 
+Then we fire the executable content for each transition. And then we enter each of the new states, adding them to the
+instance, and invoking onEntry for each of them.
 :)
 declare private function execute-transition(
   $transition as element(sc:transition),

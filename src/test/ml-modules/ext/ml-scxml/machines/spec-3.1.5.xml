@@ -1,0 +1,42 @@
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" initial="S" datamodel="xpath">
+
+  <state id="S" initial="s1">
+
+    <state id="s1" initial="s11">
+      <onexit>
+        <log expr="'leaving s1'" />
+      </onexit>
+
+      <state id="s11">
+        <onexit>
+          <log expr="'leaving s11'" />
+        </onexit>
+      </state>
+
+      <transition event="e" target="s21">
+        <log expr="'executing transition'" />
+      </transition>
+    </state>
+
+    <state id="s2" initial="s21">
+      <state id="s21">
+        <onentry>
+          <log expr="'entering s21'" />
+        </onentry>
+      </state>
+      <onentry>
+        <log expr="'entering s2'" />
+      </onentry>
+    </state>
+
+    <onentry>
+      <log expr="'entering S'" />
+    </onentry>
+
+    <onexit>
+      <log expr="'leaving S'" />
+    </onexit>
+
+  </state>
+
+</scxml>
