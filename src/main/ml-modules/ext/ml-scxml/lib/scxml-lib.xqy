@@ -150,10 +150,11 @@ declare function find-states-to-enter($source-state, $target-state)
   let $lcca := find-lcca-state(($source-state, $target-state))
   let $target-id := fn:string($target-state/@id)
   let $target-parent := $lcca/sc:state[@id = $target-id or .//sc:state/@id = $target-id]
-  return fn:reverse((
+  return (
     $target-parent,
-    $target-parent//sc:state[exists(.//sc:state[@id = $target-id])]
-  ))
+    $target-parent//sc:state[exists(.//sc:state[@id = $target-id])],
+    $target-state
+  )
 };
 
 declare function find-lcca-state($states as element()+)
@@ -253,12 +254,13 @@ declare private function new-exec(
   let $states-to-exit := find-states-to-exit($source-state, $target-state, $active-states)
   let $_ := xdmp:log(("to exit", $states-to-exit/@id/fn:string()))
   let $states-to-enter := find-states-to-enter($source-state, $target-state)
-  let $_ := xdmp:log(("to enter", $states-to-exit/@id/fn:string()))
+  let $_ := xdmp:log(("to enter", $states-to-enter/@id/fn:string()))
   
   (: EXIT STATES
   We need to look at the active states. We find the LCCA. Then we find its child that contains the
   source state. Then we include all active states including and under that child.
   :)
+  let $_ := xdmp:log("Handling states to exit")
   let $_ := (
     for $state in $states-to-exit 
     return execute-executable-content($state/sc:onexit/element(), $session),
@@ -267,23 +269,24 @@ declare private function new-exec(
 
 
   (: INVOKE TRANSITION LOGIC :)
+  let $_ := xdmp:log("Handling transitions")
   let $_ := execute-executable-content($transition/element(), $session)
   
     
   (: ENTER STATES :)
-  (: So when we enter a state, we need to follow its initial stuff. That should really
-  result in more active states being entered to. And it matters for when we start up too.
+  (:
+  So when we enter a state, we may end up entering another state is also in our list. 
   :)
-  let $_ :=
+  let $_ := xdmp:log("Handling states to enter")
+  let $entered-state-ids := ()
+  let $_ :=  
     for $state in $states-to-enter
-    return execute-executable-content($state/sc:onentry/element(), $session)
+    where fn:not($state/@id = $entered-state-ids)
+    return 
+      let $state-ids := enter-state($state, $session)
+      return xdmp:set($entered-state-ids, ($entered-state-ids, $state-ids))
   
-  let $new-active-states := fn:distinct-values( 
-    for $state in $states-to-enter
-    return enter-state($state, $session)
-  )
-  
-  let $_ := session:add-active-states($session, $new-active-states)
+  let $_ := session:add-active-states($session, $entered-state-ids)
   let $transitions := mlscxp:build-transition($states-to-enter, $source-state, $transition, $session)
   
   (: Now rewrite the instance based on our new active states and transitions :)
