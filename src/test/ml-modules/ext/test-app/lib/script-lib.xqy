@@ -38,3 +38,19 @@ declare function update($session as map:map) as empty-sequence()
     mlsc:rebuild-with-new-datamodel($instance, $new-datamodel)
   )
 };
+
+
+declare function log(
+  $session as map:map, 
+  $message as xs:string
+  ) as empty-sequence()
+{
+  let $instance := session:get-instance($session)
+  return session:set-instance($session,
+    element {fn:node-name($instance)} {
+      $instance/@*,
+      $instance/node(),
+      element message {$message}
+    }
+  )
+};
