@@ -13,6 +13,19 @@ What ml-scxml doesn't provide:
 1. A GUI for authoring and managing state machine definitions.
 2. A GUI for managing state machine instances.
 
+What would I use this?
+========
+
+If you think you can model your workflows / business processes / etc using SCXML (if you can define a process as a series of states and transitions, then the answer is "yes", and it's likely that you can do this), and if you want to track workflow instance data in MarkLogic instead of in a separate relational database, then you should consider using ml-scxml. Feel free to contact me to discuss further.
+
+What dependencies does ml-scxml have?
+========
+I'm developing ml-scxml on ML8, but odds are very good that it will run on ML7, and possibly even ML6. 
+
+ml-scxml exposes a REST API endpoint, but you don't need to use it, so you don't even need to use the REST API.
+
+There's no dependency on anything else.
+
 How do I use ml-scxml?
 ========
 More to come on this soon, but here are the basics:
