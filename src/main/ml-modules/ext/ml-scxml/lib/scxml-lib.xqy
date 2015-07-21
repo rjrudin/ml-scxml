@@ -130,7 +130,7 @@ declare function find-states-to-enter($source-state, $target-state)
 {
   let $lcca := find-lcca-state(($source-state, $target-state))
   let $target-id := fn:string($target-state/@id)
-  let $target-parent := $lcca/sc:state[@id = $target-id or //sc:state/@id = $target-id]
+  let $target-parent := $lcca/sc:state[@id = $target-id or .//sc:state/@id = $target-id]
   return fn:reverse((
     $target-parent,
     $target-parent//sc:state[exists(.//sc:state[@id = $target-id])]
