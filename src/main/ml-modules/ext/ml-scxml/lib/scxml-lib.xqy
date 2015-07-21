@@ -113,6 +113,46 @@ declare function rebuild-with-new-datamodel(
   }
 };
 
+declare function find-states-to-exit($source-state, $target-state, $active-states)
+{
+  let $source-id := fn:string($source-state/@id)
+  let $lcca := find-lcca-state(($source-state, $target-state))
+  let $source-parent as element(sc:state) := $lcca/sc:state[@id = $source-id or .//sc:state/@id = $source-id]
+  
+  return fn:reverse((
+    $source-parent,
+    $source-parent//sc:state[@id = $active-states]
+  ))
+};
+
+
+declare function find-states-to-enter($source-state, $target-state)
+{
+  let $lcca := find-lcca-state(($source-state, $target-state))
+  let $target-id := fn:string($target-state/@id)
+  let $target-parent := $lcca/sc:state[@id = $target-id or //sc:state/@id = $target-id]
+  return fn:reverse((
+    $target-parent,
+    $target-parent//sc:state[exists(.//sc:state[@id = $target-id])]
+  ))
+};
+
+declare function find-lcca-state($states as element()+)
+{
+  let $common-ancestors := $states[1]/ancestor::sc:state/@id/fn:string()
+  
+  let $_ := 
+    for $state in $states[2 to fn:last()]
+    let $these-ancestor-ids := $state/ancestor::sc:state/@id/fn:string()
+    return xdmp:set($common-ancestors, $these-ancestor-ids[. = $common-ancestors])
+  
+  return (
+    $states[1]/ancestor::sc:state[@id = $common-ancestors[fn:last()]],
+    $states[1]/ancestor::sc:scxml
+  )[1]
+};
+
+
 
 (:
 Gets the current event, and if one exists, processes it (which means find all the states that have transitions with
@@ -142,7 +182,7 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
         )[1]
         where $transition
         return (
-          session:set-instance($session, execute-transition($transition, $current-state, $session)),
+          session:set-instance($session, new-exec($transition, $current-state, $session)),
           $transition
         )
       
@@ -155,21 +195,6 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
     )
 };
 
-
-declare function find-lcca-state($states as element()+)
-{
-  let $common-ancestors := $states[1]/ancestor::sc:state/@id/fn:string()
-  
-  let $_ := 
-    for $state in $states[2 to fn:last()]
-    let $these-ancestor-ids := $state/ancestor::sc:state/@id/fn:string()
-    return xdmp:set($common-ancestors, $these-ancestor-ids[. = $common-ancestors])
-  
-  return (
-    $states[1]/ancestor::sc:state[@id = $common-ancestors[fn:last()]],
-    $states[1]/ancestor::sc:scxml
-  )[1]
-};
 
 (:
 So when we execute a transition, we first need to determine all the states that are exited and all the states that will
@@ -192,31 +217,72 @@ declare private function new-exec(
 {
   let $instance := session:get-instance($session)
   let $machine := session:get-machine($session)
+  let $active-states := session:get-active-states($session)
   
   let $_ := xdmp:trace($TRACE-EVENT, ("Executing transition for instance " || get-instance-id($instance), $transition))
   
   let $target := fn:string($transition/@target)
   let $target-state := $machine//(sc:state|sc:final)[@id = $target]
   
+  let $_ := xdmp:log(("source and target states", $source-state/@id, $target-state/@id))
+  
   (: 
   Now we need to figure out which states that we leave, and in what order, as that's important for onExit reasons.
   TODO Assuming external for now, need to implement internal as well.
   :)
   
-  let $states-to-exit := ($source-state, $source-state//sc:state)
+  let $states-to-exit := find-states-to-exit($source-state, $target-state, $active-states)
+  let $_ := xdmp:log(("to exit", $states-to-exit/@id/fn:string()))
+  let $states-to-enter := find-states-to-enter($source-state, $target-state)
+  let $_ := xdmp:log(("to enter", $states-to-exit/@id/fn:string()))
   
-  return ()
-};
-
-declare function find-states-to-enter($source-state, $target-state)
-{
-  $target-state,
-  let $lcca := find-lcca-state(($source-state, $target-state))
-  let $target-parent := $lcca/sc:state[.//sc:state/@id = $target-state/@id]
-  return (
-    $target-parent,
-    $target-parent//sc:state[fn:exists(.//sc:state[@id = $target-state/@id])]
+  (: EXIT STATES
+  We need to look at the active states. We find the LCCA. Then we find its child that contains the
+  source state. Then we include all active states including and under that child.
+  :)
+  let $_ := (
+    for $state in $states-to-exit 
+    return execute-executable-content($state/sc:onexit/element(), $session),
+    session:remove-active-states($session, $states-to-exit/@id/fn:string())
   )
+
+
+  (: INVOKE TRANSITION LOGIC :)
+  let $_ := execute-executable-content($transition/element(), $session)
+  
+    
+  (: ENTER STATES :)
+  let $transitions := ( 
+    for $state in $states-to-enter
+    return execute-executable-content($state/sc:onentry/element(), $session),
+    session:add-active-states($session, $states-to-enter/@id/fn:string()),
+    mlscxp:build-transition($states-to-enter, $source-state, $transition, $session)
+  )
+  
+  (: Now rewrite the instance based on our new active states and transitions :)
+  let $instance := session:get-instance($session)
+  
+  return element {fn:node-name($instance)} {
+    $instance/@*,
+    
+    for $kid in $instance/element()
+    return typeswitch($kid)
+      case element(mlsc:active-states) return 
+        element mlsc:active-states {
+          for $state in session:get-active-states($session)
+          return element mlsc:active-state {$state}
+        }
+      case element(mlsc:transitions) return 
+        element mlsc:transitions {
+          $kid/*,
+          $transitions
+        }
+      default return $kid,
+      
+    if (fn:not($instance/mlsc:transitions)) then 
+      element mlsc:transitions {$transitions}
+    else ()
+  }
 };
 
 declare private function execute-transition(
