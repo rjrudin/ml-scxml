@@ -29,6 +29,15 @@ public class TransitionAcrossChildStatesTest extends AbstractScxmlTest {
         assertMessageExists(4, "executing e transition");
         assertMessageExists(5, "entering s2");
         assertMessageExists(6, "entering s21");
+
+        fireEvent(instanceId, "e2");
+
+        instance = loadInstance(instanceId);
+        instance.assertActiveStates("finalState");
+        instance.assertTransitionExists(3, "e2", "s21", "finalState");
+        assertMessageExists(7, "leaving S");
+        assertMessageExists(8, "executing e2 transition");
+        assertMessageExists(9, "entering finalState");
         // instance.prettyPrint();
     }
 
