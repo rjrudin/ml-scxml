@@ -30,7 +30,7 @@
         <![CDATA[
           import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
           declare variable $session external;
-          lib:log($session, "executing transition")
+          lib:log($session, "executing e transition")
         ]]>
         </script>
       </transition>
@@ -47,6 +47,15 @@
           ]]>
           </script>
         </onentry>
+        <transition event="e2" target="finalState">
+          <script>
+          <![CDATA[
+            import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+            declare variable $session external;
+            lib:log($session, "executing e2 transition")
+          ]]>
+          </script>
+        </transition>
       </state>
       <onentry>
         <script>
@@ -80,5 +89,18 @@
     </onexit>
 
   </state>
+
+  <final id="finalState">
+    <onentry>
+      <script>
+      <![CDATA[
+        import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+        declare variable $session external;
+        lib:log($session, "entering finalState")
+      ]]>
+      </script>
+    </onentry>
+
+  </final>
 
 </scxml>
