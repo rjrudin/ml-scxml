@@ -20,8 +20,7 @@ declare function start(
   $instance-id as xs:string
   ) as element(mlsc:instance)
 {
-  let $initial-state := ($machine/sc:initial, $machine/(sc:state|sc:final)[@id = $machine/@initial], $machine/sc:state[1])[1]
-  let $_ := xdmp:trace($TRACE-EVENT, "Starting machine with id " || $machine-id || " and initial state " || $initial-state/@id)
+  xdmp:trace($TRACE-EVENT, "Starting machine with id " || $machine-id),
 
   let $instance := element mlsc:instance {
     attribute created-date-time {fn:current-dateTime()},
@@ -30,28 +29,35 @@ declare function start(
     element mlsc:active-states {},  
     let $data := $machine//sc:datamodel/sc:data
     where $data
-    return element sc:datamodel { $data }
+    return element sc:datamodel { $data },
+    element mlsc:transitions {}
   }
   
   let $session := session:new($instance, $machine, ())
    
+  let $initial-state := ($machine/sc:initial, $machine/(sc:state|sc:parallel|sc:final)[@id = $machine/@initial], $machine/sc:state[1])[1]
+
   let $active-states := enter-state($initial-state, $session)
+  
+  let $instance := session:get-instance($session)
   
   return element mlsc:instance {
     $instance/@*,
     for $node in $instance/node()
     return typeswitch($node)
       case element(mlsc:active-states) return 
-        element mlsc:active-states {
+        element {fn:node-name($node)} {
+          $node/@*,
           for $state in $active-states
           return element mlsc:active-state {$state}
         }
-      default return $node,
-      
-    element mlsc:transitions {
-      (: TODO Include all initial states? :)
-      mlscxp:build-transition($initial-state, (), (), $session)
-    }
+      case element(mlsc:transitions) return 
+        element {fn:node-name($node)} {
+          $node/@*,
+          (: TODO Include all initial states? :)
+          mlscxp:build-transition($initial-state, (), (), $session)
+        }
+      default return $node
   }
 };
 
@@ -63,6 +69,8 @@ declare private function enter-state(
   $session as map:map
   ) as xs:string+
 {
+  xdmp:trace($TRACE-EVENT, "Entering state: " || $state/@id),
+  
   let $_ := execute-executable-content($state/sc:onentry/element(), $session)
   
   return (
@@ -238,13 +246,11 @@ declare private function new-exec(
   let $instance := session:get-instance($session)
   let $machine := session:get-machine($session)
   let $active-states := session:get-active-states($session)
-  
-  let $_ := xdmp:trace($TRACE-EVENT, ("Executing transition for instance " || get-instance-id($instance), $transition))
-  
   let $target := fn:string($transition/@target)
-  let $target-state := $machine//(sc:state|sc:final)[@id = $target]
   
-  let $_ := xdmp:log(("source and target states", $source-state/@id, $target-state/@id))
+  let $_ := xdmp:trace($TRACE-EVENT, "Executing transition with target " || $target || " for instance " || get-instance-id($instance))
+  
+  let $target-state := $machine//(sc:state|sc:final)[@id = $target]
   
   (: 
   Now we need to figure out which states that we leave, and in what order, as that's important for onExit reasons.
@@ -252,32 +258,20 @@ declare private function new-exec(
   :)
   
   let $states-to-exit := find-states-to-exit($source-state, $target-state, $active-states)
-  let $_ := xdmp:log(("to exit", $states-to-exit/@id/fn:string()))
   let $states-to-enter := find-states-to-enter($source-state, $target-state)
-  let $_ := xdmp:log(("to enter", $states-to-enter/@id/fn:string()))
   
-  (: EXIT STATES
-  We need to look at the active states. We find the LCCA. Then we find its child that contains the
-  source state. Then we include all active states including and under that child.
-  :)
-  let $_ := xdmp:log("Handling states to exit")
+  (: EXIT STATES :)
   let $_ := (
-    for $state in $states-to-exit 
+    for $state in $states-to-exit
+    let $_ := xdmp:trace($TRACE-EVENT, "Exiting state: " || $state/@id) 
     return execute-executable-content($state/sc:onexit/element(), $session),
     session:remove-active-states($session, $states-to-exit/@id/fn:string())
   )
 
-
   (: INVOKE TRANSITION LOGIC :)
-  let $_ := xdmp:log("Handling transitions")
   let $_ := execute-executable-content($transition/element(), $session)
   
-    
   (: ENTER STATES :)
-  (:
-  So when we enter a state, we may end up entering another state is also in our list. 
-  :)
-  let $_ := xdmp:log("Handling states to enter")
   let $entered-state-ids := ()
   let $_ :=  
     for $state in $states-to-enter

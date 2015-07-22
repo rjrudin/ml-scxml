@@ -15,7 +15,8 @@ public class TransitionAcrossChildStatesTest extends AbstractScxmlTest {
 
         instance = loadInstance(instanceId);
         instance.assertActiveStates("S", "s1", "s11");
-        instance.assertElementMissing("No messages should have been logged yet", "//message");
+        instance.prettyPrint();
+        assertMessageExists(1, "entering S");
 
         fireEvent(instanceId, "e");
 
@@ -23,12 +24,12 @@ public class TransitionAcrossChildStatesTest extends AbstractScxmlTest {
         instance.assertActiveStates("S", "s2", "s21");
         instance.assertTransitionExists(2, "e", "s1", "s2");
         instance.assertTransitionExists(2, "e", "s1", "s21");
-        assertMessageExists(1, "leaving s11");
-        assertMessageExists(2, "leaving s1");
-        assertMessageExists(3, "executing e transition");
-        assertMessageExists(4, "entering s2");
-        assertMessageExists(5, "entering s21");
-        instance.prettyPrint();
+        assertMessageExists(2, "leaving s11");
+        assertMessageExists(3, "leaving s1");
+        assertMessageExists(4, "executing e transition");
+        assertMessageExists(5, "entering s2");
+        assertMessageExists(6, "entering s21");
+        // instance.prettyPrint();
     }
 
     private void assertMessageExists(int position, String message) {
