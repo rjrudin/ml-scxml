@@ -37,7 +37,7 @@ declare function start(
    
   let $initial-state := ($machine/sc:initial, $machine/(sc:state|sc:parallel|sc:final)[@id = $machine/@initial], $machine/sc:state[1])[1]
 
-  let $active-states := enter-state($initial-state, $session)
+  let $active-states := enter-state($initial-state, (), $session)
   
   let $instance := session:get-instance($session)
   
@@ -66,6 +66,7 @@ Returns a sequence containing the ID of each state that was entered.
 :)
 declare private function enter-state(
   $state as element(), 
+  $transition-target as xs:string?,
   $session as map:map
   ) as xs:string+
 {
@@ -79,7 +80,17 @@ declare private function enter-state(
     let $initial := $state/@initial/fn:string()
     let $child-state := $state/element()[@id = $initial]
     where $initial and $child-state
-    return enter-state($child-state, $session)
+    return 
+      if ($transition-target) then 
+        (: 
+        We don't want to go to the initial state in a compound state if our transition target is some other state in
+        that compound target.
+        :)
+        let $non-target-initial := exists($state/element()[@id = $transition-target]) and fn:not($child-state/@id = $transition-target)
+        where fn:not($non-target-initial)
+        return enter-state($child-state, $transition-target, $session)
+      else
+        enter-state($child-state, $transition-target, $session)
   )
 };
 
@@ -144,7 +155,7 @@ declare function find-states-to-exit($source-state, $target-state, $active-state
 {
   let $source-id := fn:string($source-state/@id)
   let $lcca := find-lcca-state(($source-state, $target-state))
-  let $source-parent as element(sc:state) := $lcca/sc:state[@id = $source-id or .//sc:state/@id = $source-id]
+  let $source-parent as element() := $lcca/(sc:state|sc:initial|sc:parallel)[@id = $source-id or .//sc:state/@id = $source-id]
   
   return fn:reverse((
     $source-parent,
@@ -153,14 +164,25 @@ declare function find-states-to-exit($source-state, $target-state, $active-state
 };
 
 
+(:
+If one of the states to enter is a parallel, then we need to grab all the child states of that
+parallel that aren't already being selected.
+:)
 declare function find-states-to-enter($source-state, $target-state)
 {
   let $lcca := find-lcca-state(($source-state, $target-state))
   let $target-id := fn:string($target-state/@id)
-  let $target-parent := $lcca/sc:state[@id = $target-id or .//sc:state/@id = $target-id]
+  let $target-parent as element() := $lcca/(sc:state|sc:parallel)[@id = $target-id or .//sc:state/@id = $target-id]
+  let $target-parent-kids := $target-parent//sc:state[exists(.//sc:state[@id = $target-id])]
+  let $parallel-states := 
+    if ($target-parent instance of element(sc:parallel)) then 
+      $target-parent/sc:state[fn:not(@id = $target-parent-kids/@id/fn:string())]
+    else ()
+    
   return (
     $target-parent,
-    $target-parent//sc:state[exists(.//sc:state[@id = $target-id])],
+    $target-parent-kids,
+    $parallel-states,
     $target-state
   )
 };
@@ -277,7 +299,7 @@ declare private function new-exec(
     for $state in $states-to-enter
     where fn:not($state/@id = $entered-state-ids)
     return 
-      let $state-ids := enter-state($state, $session)
+      let $state-ids := enter-state($state, $target, $session)
       return xdmp:set($entered-state-ids, ($entered-state-ids, $state-ids))
   
   let $_ := session:add-active-states($session, $entered-state-ids)

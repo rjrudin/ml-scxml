@@ -18,7 +18,9 @@ public class ParallelSampleFromSpecTest extends AbstractScxmlTest {
         Instance i = loadInstance(instanceId);
         i.assertActiveStates("first");
         i.assertTransitionExists(1, "first");
-
+        
+        //if (true) return;
+        
         /**
          * Per the spec, when we enter into S12, which is a child of S1, we should also enter into the initial child
          * state of S2, which is S21.
@@ -27,9 +29,12 @@ public class ParallelSampleFromSpecTest extends AbstractScxmlTest {
         Response r = fireEvent(instanceId, event);
         assertResponseHasInstanceIdAndState(r, instanceId, "S12", "S21");
         i = loadInstance(instanceId);
-        i.assertActiveStates("p", "S12", "S21");
+        i.prettyPrint();
+        i.assertActiveStates("p", "S1", "S12", "S2", "S21");
         i.assertTransitionExists(2, event, "first", "p");
+        i.assertTransitionExists(2, event, "first", "S1");
         i.assertTransitionExists(2, event, "first", "S12");
+        i.assertTransitionExists(2, event, "first", "S2");
         i.assertTransitionExists(2, event, "first", "S21");
 
         // TODO The term "active states" is misleading because S1Final is a final state; not sure what to rename it to
