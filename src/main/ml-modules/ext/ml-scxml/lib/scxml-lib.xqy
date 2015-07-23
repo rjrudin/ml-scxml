@@ -37,7 +37,7 @@ declare function start(
    
   let $initial-state := ($machine/sc:initial, $machine/(sc:state|sc:parallel|sc:final)[@id = $machine/@initial], $machine/sc:state[1])[1]
 
-  let $active-states := enter-state($initial-state, (), $session)
+  let $entered-states := enter-state($initial-state, (), $session)
   
   let $instance := session:get-instance($session)
   
@@ -48,14 +48,13 @@ declare function start(
       case element(mlsc:active-states) return 
         element {fn:node-name($node)} {
           $node/@*,
-          for $state in $active-states
-          return element mlsc:active-state {$state}
+          for $state in $entered-states
+          return element mlsc:active-state {$state/@id/fn:string()}
         }
       case element(mlsc:transitions) return 
         element {fn:node-name($node)} {
           $node/@*,
-          (: TODO Include all initial states? :)
-          mlscxp:build-transition($initial-state, (), (), $session)
+          mlscxp:build-transition($entered-states, (), (), $session)
         }
       default return $node
   }
@@ -68,15 +67,16 @@ declare private function enter-state(
   $state as element(), 
   $transition-target as xs:string?,
   $session as map:map
-  ) as xs:string+
+  ) as element()+
 {
   xdmp:trace($TRACE-EVENT, "Entering state: " || $state/@id),
   
   let $_ := execute-executable-content($state/sc:onentry/element(), $session)
   
   return (
-    $state/@id/fn:string(),
+    $state,
 
+    (: TODO Support initial element too :)
     let $initial := $state/@initial/fn:string()
     let $child-state := $state/element()[@id = $initial]
     where $initial and $child-state
@@ -294,16 +294,16 @@ declare private function new-exec(
   let $_ := execute-executable-content($transition/element(), $session)
   
   (: ENTER STATES :)
-  let $entered-state-ids := ()
+  let $entered-states := ()
   let $_ :=  
     for $state in $states-to-enter
-    where fn:not($state/@id = $entered-state-ids)
+    where fn:not($state/@id = $entered-states/@id/fn:string())
     return 
-      let $state-ids := enter-state($state, $target, $session)
-      return xdmp:set($entered-state-ids, ($entered-state-ids, $state-ids))
+      let $states := enter-state($state, $target, $session)
+      return xdmp:set($entered-states, ($entered-states, $states))
   
-  let $_ := session:add-active-states($session, $entered-state-ids)
-  let $transitions := mlscxp:build-transition($states-to-enter, $source-state, $transition, $session)
+  let $_ := session:add-active-states($session, $entered-states/@id/fn:string())
+  let $transitions := mlscxp:build-transition($entered-states, $source-state, $transition, $session)
   
   (: Now rewrite the instance based on our new active states and transitions :)
   let $instance := session:get-instance($session)
