@@ -331,67 +331,8 @@ declare private function new-exec(
   }
 };
 
-declare private function execute-transition(
-  $transition as element(sc:transition),
-  $current-state as element(),
-  $session as map:map
-  ) as element(mlsc:instance)
-{
-  let $instance := session:get-instance($session)
-  let $machine := session:get-machine($session)
-  
-  let $_ := xdmp:trace($TRACE-EVENT, ("Executing transition for instance " || get-instance-id($instance), $transition))
-  
-  let $target := fn:string($transition/@target)
-  let $new-state := $machine//(sc:state|sc:final)[@id = $target]
-  
-  return
-    if ($new-state) then
-      let $parallel := $new-state/ancestor::sc:parallel
-      return
-        if ($parallel) then
-        
-          (:
-          If we're entering this parallel and the instance doesn't have any active states that match those of the child
-          states of the parallel element, we need to initialize an active state for each child state of the parallel element.
-          And we add the id of the parallel as an active state as well.
-          :)
-          let $active-states := get-active-states($instance)
-          let $entering-parallel := fn:not($active-states = $parallel//(sc:initial|sc:state|sc:final)/@id/fn:string())
-          let $_ := xdmp:trace($TRACE-EVENT, "Entering parallel? " || $entering-parallel)
 
-          return
-            if ($entering-parallel) then           
-              let $other-states := $parallel/sc:state[fn:not(@id = $target) and fn:not(.//sc:state[@id = $target])]
-              let $other-initial-states := 
-                for $other-state in $other-states
-                return $other-state/sc:state[@id = $other-state/@initial]
-              
-              return enter-states(($parallel, $new-state, $other-initial-states), $current-state, $transition, $session)
-            else
-              enter-states($new-state, $current-state, $transition, $session)
-          
-        else
-          enter-states($new-state, $current-state, $transition, $session)
-          
-    else
-      (: The spec says to just "discard" the event, but for now, throwing an error to signify an issue :)
-      fn:error(xs:QName("MISSING-STATE"), "Could not find state '" || $target || "' to transition to for event '" || $transition/@event || "'")
-};
-
-
-declare private function enter-states(
-  $new-states as element()+,
-  $current-state as element()?,
-  $transition as element(sc:transition)?,
-  $session as map:map
-  ) as element(mlsc:instance)
-{
-  let $instance := session:get-instance($session)
-  let $machine := session:get-machine($session)
-  
-  let $_ := xdmp:trace($TRACE-EVENT, "Entering state(s) '" || fn:string-join($new-states/@id, ",") || "' for instance " || get-instance-id($instance))
-  
+(:
   let $states-to-remove := 
     (: According to the example in 3.1.3 of the spec, we raise an event for the parent state when we reach the final child state :)
     for $final-state in $new-states[self::sc:final]
@@ -426,43 +367,7 @@ declare private function enter-states(
               $final-state-ids
             )
       )
-  
-  let $states-to-retain := $instance/mlsc:active-states/mlsc:active-state[fn:not(. = $current-state/@id) and fn:not(. = $states-to-remove)]
-  
-  let $new-active-states := 
-    element mlsc:active-states {
-      $states-to-retain,
-      for $state in $new-states
-      let $id := fn:string($state/@id)
-      where fn:not($id = $states-to-retain/fn:string()) and fn:not($id = $states-to-remove)
-      return element mlsc:active-state {$id}
-    }
-  
-  let $transitions := mlscxp:build-transition($new-states, $current-state, $transition, $session) 
-  
-  (: TODO Fix this order; should be onexit, transition, onentry :)
-  let $_ := execute-executable-content($current-state/sc:onexit/element(), $session)
-  let $_ := execute-executable-content($new-states/sc:onentry/element(), $session)
-  let $instance := session:get-instance($session)
-  
-  return element {fn:node-name($instance)} {
-    $instance/@*,
-    
-    for $kid in $instance/element()
-    return typeswitch($kid)
-      case element(mlsc:active-states) return $new-active-states
-      case element(mlsc:transitions) return 
-        element mlsc:transitions {
-          $kid/*,
-          $transitions
-        }
-      default return $kid,
-      
-    if (fn:not($instance/mlsc:transitions)) then 
-      element mlsc:transitions {$transitions}
-    else ()
-  }
-};
+:)
 
 
 declare private function execute-executable-content(
