@@ -174,7 +174,6 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
 
 
 (:
-TODO A transition can also be on a parallel element.
 TODO A transition can have multiple target states.
 
 "1) if any <parallel> element is a member of the set, any of its children that are not members of the set must be added "
@@ -264,7 +263,6 @@ declare private function enter-state(
   return (
     $state,
     
-    (: TODO Support initial element too :)
     let $initial := $state/@initial/fn:string()
     let $child-state := $state/element()[@id = $initial]
     where $initial and $child-state
@@ -306,7 +304,6 @@ declare private function handle-final-states(
   let $parent := $state/..[self::sc:state]
   where $parent
   return (
-    (: TODO Need to test for this :)
     add-internal-event($parent, $session),
     
     let $parallel := $parent/..[self::sc:parallel]
