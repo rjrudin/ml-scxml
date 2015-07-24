@@ -324,8 +324,13 @@ declare private function handle-final-states(
       return (
         add-internal-event($parallel, $session),
         
+        (: Exit the final states in order :)
         for $state in $final-states
-        return exit-state($state, $session)
+        return exit-state($state, $session),
+        
+        (: And then exit the parent states in order :)
+        for $state in $final-states
+        return exit-state($state/.., $session)
       ) 
   )
 };

@@ -58,11 +58,10 @@ public class ParallelSampleFromSpecTest extends AbstractScxmlTest {
         instance.assertTransitionExists(5, event, "S22", "S2Final");
         instance.assertTransitionExists(6, "done.state.p", "p", "finalState");
 
-        // TODO Based on "document order", the other should be S1Final, S2Final, S1, S2, p
         assertMessageExists(1, "leaving S1Final");
         assertMessageExists(2, "leaving S2Final");
-        assertMessageExists(3, "leaving S2");
-        assertMessageExists(4, "leaving S1");
+        assertMessageExists(3, "leaving S1");
+        assertMessageExists(4, "leaving S2");
         assertMessageExists(5, "leaving p");
         assertMessageExists(6, "transitioning to finalState");
         assertMessageExists(7, "entering finalState");
