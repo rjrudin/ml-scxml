@@ -26,7 +26,7 @@ declare function start(
     attribute created-date-time {fn:current-dateTime()},
     element mlsc:machine-id {$machine-id},
     element mlsc:instance-id {$instance-id},
-    element mlsc:active-states {},  
+    element mlsc:current-states {},  
     let $data := $machine//sc:datamodel/sc:data
     where $data
     return element sc:datamodel { $data },
@@ -45,11 +45,11 @@ declare function start(
     $instance/@*,
     for $node in $instance/node()
     return typeswitch($node)
-      case element(mlsc:active-states) return 
+      case element(mlsc:current-states) return 
         element {fn:node-name($node)} {
           $node/@*,
           for $state in $entered-states
-          return element mlsc:active-state {$state/@id/fn:string()}
+          return element mlsc:current-state {$state/@id/fn:string()}
         }
       case element(mlsc:transitions) return 
         element {fn:node-name($node)} {
@@ -125,9 +125,9 @@ declare function get-machine-id($instance as element(mlsc:instance)) as xs:strin
 };
 
 
-declare function get-active-states($instance as element(mlsc:instance)) as xs:string*
+declare function get-current-states($instance as element(mlsc:instance)) as xs:string*
 {
-  $instance/mlsc:active-states/mlsc:active-state/fn:string()
+  $instance/mlsc:current-states/mlsc:current-state/fn:string()
 };
 
 
@@ -151,7 +151,7 @@ declare function rebuild-with-new-datamodel(
   }
 };
 
-declare function find-states-to-exit($source-state, $target-state, $active-states)
+declare function find-states-to-exit($source-state, $target-state, $current-states)
 {
   let $source-id := fn:string($source-state/@id)
   let $lcca := find-lcca-state(($source-state, $target-state))
@@ -159,7 +159,7 @@ declare function find-states-to-exit($source-state, $target-state, $active-state
   
   return fn:reverse((
     $source-parent,
-    $source-parent//sc:state[@id = $active-states]
+    $source-parent//sc:state[@id = $current-states]
   ))
 };
 
@@ -221,7 +221,7 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
     
     let $_ := xdmp:trace($TRACE-EVENT, ("Handling event '" || $event-name || "' for instance " || get-instance-id($instance)))
   
-    let $current-states := $machine//(sc:state|sc:initial|sc:parallel)[@id = get-active-states($instance)]
+    let $current-states := $machine//(sc:state|sc:initial|sc:parallel)[@id = get-current-states($instance)]
     
     return (
       let $executed-transitions := 
@@ -248,7 +248,7 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
 
 (:
 So when we execute a transition, we first need to determine all the states that are exited and all the states that will
-be entered. And then we fire the onExit block for each of those. Then we remove each of those states from the set of active states on the instance. 
+be entered. And then we fire the onExit block for each of those. Then we remove each of those states from the set of current states on the instance. 
 Then we fire the executable content for each transition. And then we enter each of the new states, adding them to the
 instance, and invoking onEntry for each of them.
 
@@ -267,7 +267,7 @@ declare private function new-exec(
 {
   let $instance := session:get-instance($session)
   let $machine := session:get-machine($session)
-  let $active-states := session:get-active-states($session)
+  let $current-states := session:get-current-states($session)
   let $target := fn:string($transition/@target)
   
   let $_ := xdmp:trace($TRACE-EVENT, "Executing transition with target " || $target || " for instance " || get-instance-id($instance))
@@ -279,7 +279,7 @@ declare private function new-exec(
   TODO Assuming external for now, need to implement internal as well.
   :)
   
-  let $states-to-exit := find-states-to-exit($source-state, $target-state, $active-states)
+  let $states-to-exit := find-states-to-exit($source-state, $target-state, $current-states)
   let $states-to-enter := find-states-to-enter($source-state, $target-state)
   
   (: EXIT STATES :)
@@ -287,7 +287,7 @@ declare private function new-exec(
     for $state in $states-to-exit
     let $_ := xdmp:trace($TRACE-EVENT, "Exiting state: " || $state/@id) 
     return execute-executable-content($state/sc:onexit/element(), $session),
-    session:remove-active-states($session, $states-to-exit/@id/fn:string())
+    session:remove-current-states($session, $states-to-exit/@id/fn:string())
   )
 
   (: INVOKE TRANSITION LOGIC :)
@@ -302,10 +302,9 @@ declare private function new-exec(
       let $states := enter-state($state, $target, $session)
       return xdmp:set($entered-states, ($entered-states, $states))
   
-  let $_ := session:add-active-states($session, $entered-states/@id/fn:string())
+  let $_ := session:add-current-states($session, $entered-states/@id/fn:string())
   let $transitions := mlscxp:build-transition($entered-states, $source-state, $transition, $session)
   
-  (: Now rewrite the instance based on our new active states and transitions :)
   let $instance := session:get-instance($session)
   
   return element {fn:node-name($instance)} {
@@ -313,10 +312,10 @@ declare private function new-exec(
     
     for $kid in $instance/element()
     return typeswitch($kid)
-      case element(mlsc:active-states) return 
-        element mlsc:active-states {
-          for $state in session:get-active-states($session)
-          return element mlsc:active-state {$state}
+      case element(mlsc:current-states) return 
+        element mlsc:current-states {
+          for $state in session:get-current-states($session)
+          return element mlsc:current-state {$state}
         }
       case element(mlsc:transitions) return 
         element mlsc:transitions {
@@ -350,16 +349,16 @@ declare private function new-exec(
         return
         
           let $final-state-ids := $parallel/sc:state/sc:final/@id/fn:string()
-          let $active-states := $instance/mlsc:active-states/mlsc:active-state/fn:string()
+          let $current-states := $instance/mlsc:current-states/mlsc:current-state/fn:string()
           let $current-final-id := fn:string($final-state/@id)
           let $unfinished-state-ids := 
             for $state-id in $final-state-ids
-            where fn:not($state-id = ($active-states, $current-final-id))
+            where fn:not($state-id = ($current-states, $current-final-id))
             return $state-id
           
           where fn:not($unfinished-state-ids)
           return
-            (: When we close out a parallel, we need to remove the child final IDs from the set of active states :) 
+            (: When we close out a parallel, we need to remove the child final IDs from the set of current states :) 
             let $parallel-event-name := "done.state." || $parallel/@id
             return (
               xdmp:trace($TRACE-EVENT, "Raising event " || $parallel-event-name || " for instance " || get-instance-id($instance)),

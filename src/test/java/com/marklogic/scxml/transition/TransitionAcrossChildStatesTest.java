@@ -14,14 +14,13 @@ public class TransitionAcrossChildStatesTest extends AbstractScxmlTest {
         String instanceId = startMachineWithId("spec-3.1.5");
 
         instance = loadInstance(instanceId);
-        instance.assertActiveStates("S", "s1", "s11");
-        instance.prettyPrint();
+        instance.assertCurrentStates("S", "s1", "s11");
         assertMessageExists(1, "entering S");
 
         fireEvent(instanceId, "e");
 
         instance = loadInstance(instanceId);
-        instance.assertActiveStates("S", "s2", "s21");
+        instance.assertCurrentStates("S", "s2", "s21");
         instance.assertTransitionExists(2, "e", "s1", "s2");
         instance.assertTransitionExists(2, "e", "s1", "s21");
         assertMessageExists(2, "leaving s11");
@@ -33,7 +32,7 @@ public class TransitionAcrossChildStatesTest extends AbstractScxmlTest {
         fireEvent(instanceId, "e2");
 
         instance = loadInstance(instanceId);
-        instance.assertActiveStates("finalState");
+        instance.assertCurrentStates("finalState");
         instance.assertTransitionExists(3, "e2", "s21", "finalState");
         assertMessageExists(7, "leaving S");
         assertMessageExists(8, "executing e2 transition");

@@ -20,7 +20,7 @@ public class ExecuteOnExitTest extends AbstractScxmlTest {
         assertResponseHasInstanceIdAndState(r, instanceId, "s1");
 
         Instance i = loadInstance(instanceId);
-        i.assertActiveState("s1");
+        i.assertCurrentState("s1");
         i.assertDatamodelElementExists("ticket", "price[. = '10']");
         i.assertDatamodelElementExists("ticket", "newElement[. = 'This was inserted via a script block']");
 
@@ -41,7 +41,7 @@ public class ExecuteOnExitTest extends AbstractScxmlTest {
         assertResponseHasInstanceIdAndState(r, instanceId, "s1");
 
         Instance i = loadInstance(instanceId);
-        i.assertActiveState("s1");
+        i.assertCurrentState("s1");
         i.assertDatamodelElementExists("ticket", "price[. = '20']");
     }
 }

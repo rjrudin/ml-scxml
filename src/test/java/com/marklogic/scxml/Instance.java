@@ -16,15 +16,15 @@ public class Instance extends Fragment {
         assertElementValue("/mlsc:instance/mlsc:instance-id", instanceId);
     }
 
-    public void assertActiveState(String state) {
-        assertElementValue("/mlsc:instance/mlsc:active-states/mlsc:active-state", state);
+    public void assertCurrentState(String state) {
+        assertElementValue("/mlsc:instance/mlsc:current-states/mlsc:current-state", state);
     }
 
-    public void assertActiveStates(String... states) {
+    public void assertCurrentStates(String... states) {
         for (String state : states) {
-            assertActiveState(state);
+            assertCurrentState(state);
         }
-        String xpath = "/mlsc:instance/mlsc:active-states/mlsc:active-state[%d]";
+        String xpath = "/mlsc:instance/mlsc:current-states/mlsc:current-state[%d]";
         assertElementExists(format(xpath, states.length));
         assertElementMissing("Expected " + xpath + " to not exist", format(xpath, states.length + 1));
     }
