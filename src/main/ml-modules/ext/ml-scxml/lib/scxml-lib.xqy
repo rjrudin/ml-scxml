@@ -61,41 +61,6 @@ declare function start(
 };
 
 (:
-Returns a sequence containing the ID of each state that was entered.
-:)
-declare private function enter-state(
-  $state as element(), 
-  $transition-target as xs:string?,
-  $session as map:map
-  ) as element()+
-{
-  xdmp:trace($TRACE-EVENT, "Entering state: " || $state/@id),
-  
-  let $_ := execute-executable-content($state/sc:onentry/element(), $session)
-  
-  return (
-    $state,
-    
-    (: TODO Support initial element too :)
-    let $initial := $state/@initial/fn:string()
-    let $child-state := $state/element()[@id = $initial]
-    where $initial and $child-state
-    return 
-      if ($transition-target) then 
-        (: 
-        We don't want to go to the initial state in a compound state if our transition target is some other state in
-        that compound target.
-        :)
-        let $non-target-initial := exists($state/element()[@id = $transition-target]) and fn:not($child-state/@id = $transition-target)
-        where fn:not($non-target-initial)
-        return enter-state($child-state, $transition-target, $session)
-      else
-        enter-state($child-state, $transition-target, $session)
-  )
-};
-
-
-(:
 Starts a new session and processes the given event. 
 :)
 declare function handle-event(
@@ -112,44 +77,6 @@ declare function handle-event(
   )
 };
 
-
-declare function get-instance-id($instance as element(mlsc:instance)) as xs:string
-{
-  $instance/mlsc:instance-id/fn:string()
-};
-
-
-declare function get-machine-id($instance as element(mlsc:instance)) as xs:string
-{
-  $instance/mlsc:machine-id/fn:string()
-};
-
-
-declare function get-current-states($instance as element(mlsc:instance)) as xs:string*
-{
-  $instance/mlsc:current-states/mlsc:current-state/fn:string()
-};
-
-
-declare function get-datamodel($instance as element(mlsc:instance)) as element(sc:datamodel)?
-{
-  $instance/sc:datamodel
-};
-
-
-declare function rebuild-with-new-datamodel(
-  $instance as element(mlsc:instance),
-  $new-datamodel as element(sc:datamodel)
-  ) as element(mlsc:instance)
-{
-  element mlsc:instance {
-    $instance/@*,
-    for $kid in $instance/node()
-    return
-      if ($kid instance of element(sc:datamodel)) then $new-datamodel
-      else $kid
-  }
-};
 
 declare function find-states-to-exit($source-state, $target-state, $current-states)
 {
@@ -220,7 +147,7 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
     let $machine := session:get-machine($session)
     
     let $_ := xdmp:trace($TRACE-EVENT, ("Handling event '" || $event-name || "' for instance " || get-instance-id($instance)))
-  
+    
     let $current-states := $machine//(sc:state|sc:initial|sc:parallel)[@id = get-current-states($instance)]
     
     return (
@@ -285,13 +212,13 @@ declare private function execute-transition(
     for $state in $states-to-enter
     where fn:not($state/@id = $entered-states/@id/fn:string())
     return 
+      (: TODO Should we do "handle-final-state" as part of enter-state? I think we should :)
       let $states := enter-state($state, $target, $session)
       return xdmp:set($entered-states, ($entered-states, $states))
   
-  let $_ := raise-events-for-final-states($entered-states, $session)
   let $_ := session:add-current-states($session, $entered-states/@id/fn:string())
-  
-  let $_ := exit-parallel-states-as-necessary($entered-states, $session)
+
+  let $_ := handle-final-states($entered-states, $session)
   
   let $transitions := mlscxp:build-transition($entered-states, $source-state, $transition, $session)
   
@@ -321,6 +248,41 @@ declare private function execute-transition(
 };
 
 
+(:
+Returns a sequence containing the ID of each state that was entered.
+:)
+declare private function enter-state(
+  $state as element(), 
+  $transition-target as xs:string?,
+  $session as map:map
+  ) as element()+
+{
+  xdmp:trace($TRACE-EVENT, "Entering state: " || $state/@id),
+  
+  let $_ := execute-executable-content($state/sc:onentry/element(), $session)
+  
+  return (
+    $state,
+    
+    (: TODO Support initial element too :)
+    let $initial := $state/@initial/fn:string()
+    let $child-state := $state/element()[@id = $initial]
+    where $initial and $child-state
+    return 
+      if ($transition-target) then 
+        (: 
+        We don't want to go to the initial state in a compound state if our transition target is some other state in
+        that compound target.
+        :)
+        let $non-target-initial := exists($state/element()[@id = $transition-target]) and fn:not($child-state/@id = $transition-target)
+        where fn:not($non-target-initial)
+        return enter-state($child-state, $transition-target, $session)
+      else
+        enter-state($child-state, $transition-target, $session)
+  )
+};
+
+
 declare private function exit-state(
   $state as element(),
   $session as map:map
@@ -332,7 +294,7 @@ declare private function exit-state(
 };
 
 
-declare private function raise-events-for-final-states(
+declare private function handle-final-states(
   $entered-states as element()*,
   $session as map:map
   ) as empty-sequence()
@@ -345,44 +307,27 @@ declare private function raise-events-for-final-states(
   where $parent
   return (
     (: TODO Need to test for this :)
-    add-internal-event($parent, $session)
+    add-internal-event($parent, $session),
+    
+    let $parallel := $parent/..[self::sc:parallel]
+    where $parallel
+    return
+      let $instance := session:get-instance($session)
+      let $current-states := session:get-current-states($session)
+      let $current-final-id := fn:string($state/@id)
+      let $final-states := $parallel/sc:state/sc:final
+      let $final-states-not-yet-reached := 
+        for $state in $final-states
+        where fn:not(fn:string($state/@id) = ($current-states, $current-final-id))
+        return $state
+      where fn:not($final-states-not-yet-reached)
+      return (
+        add-internal-event($parallel, $session),
+        
+        for $state in $final-states
+        return exit-state($state, $session)
+      ) 
   )
-};
-
-
-(:
-TODO Combine this with raise-events-for-final-states, as this doesn't need to return anything - it just needs to 
-raise events for parallel states that should be exited.
-
-TODO Should also make an "exit-state" function, which only needs to apply executable content and then remove itself
-from the set of current states.
-:)
-declare private function exit-parallel-states-as-necessary(
-  $entered-states as element()*,
-  $session as map:map
-  ) as element()*
-{
-  for $state in $entered-states[self::sc:final]
-  let $parent := $state/..[self::sc:state]
-  let $parallel := $parent/..[self::sc:parallel]
-  where $parallel
-  return
-    let $instance := session:get-instance($session)
-    let $current-states := session:get-current-states($session)
-    let $current-final-id := fn:string($state/@id)
-    let $final-states := $parallel/sc:state/sc:final
-    let $final-states-not-yet-reached := 
-      for $state in $final-states
-      where fn:not(fn:string($state/@id) = ($current-states, $current-final-id))
-      return $state
-    where fn:not($final-states-not-yet-reached)
-    return (
-      add-internal-event($parallel, $session),
-      
-      (: When we close out a parallel, we need to remove the child final IDs from the set of current states :)
-      let $final-state-ids := $final-states/@id/fn:string()
-      return session:remove-current-states($session, $final-state-ids)
-    )
 };
 
 
@@ -472,4 +417,42 @@ declare private function execute-script(
   )
 };
 
+
+declare function get-instance-id($instance as element(mlsc:instance)) as xs:string
+{
+  $instance/mlsc:instance-id/fn:string()
+};
+
+
+declare function get-machine-id($instance as element(mlsc:instance)) as xs:string
+{
+  $instance/mlsc:machine-id/fn:string()
+};
+
+
+declare function get-current-states($instance as element(mlsc:instance)) as xs:string*
+{
+  $instance/mlsc:current-states/mlsc:current-state/fn:string()
+};
+
+
+declare function get-datamodel($instance as element(mlsc:instance)) as element(sc:datamodel)?
+{
+  $instance/sc:datamodel
+};
+
+
+declare function rebuild-with-new-datamodel(
+  $instance as element(mlsc:instance),
+  $new-datamodel as element(sc:datamodel)
+  ) as element(mlsc:instance)
+{
+  element mlsc:instance {
+    $instance/@*,
+    for $kid in $instance/node()
+    return
+      if ($kid instance of element(sc:datamodel)) then $new-datamodel
+      else $kid
+  }
+};
 
