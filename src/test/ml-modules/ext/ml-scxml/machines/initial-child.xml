@@ -1,0 +1,24 @@
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" initial="S">
+  <state id="S">
+    <onentry>
+      <script>
+        <![CDATA[
+          import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+          declare variable $session external;
+          lib:log($session, "entering S")
+        ]]>
+      </script>
+    </onentry>
+    <initial id="S1">
+      <onentry>
+        <script>
+        <![CDATA[
+          import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+          declare variable $session external;
+          lib:log($session, "entering S1")
+        ]]>
+        </script>
+      </onentry>
+    </initial>
+  </state>
+</scxml>

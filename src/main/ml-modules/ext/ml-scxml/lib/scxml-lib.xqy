@@ -263,20 +263,20 @@ declare private function enter-state(
   return (
     $state,
     
-    let $initial := $state/@initial/fn:string()
-    let $child-state := $state/element()[@id = $initial]
-    where $initial and $child-state
+    let $initial-state := 
+      let $id := $state/@initial/fn:string()
+      return 
+        if ($id) then $state/element()[@id = $id]
+        else $state/sc:initial
+    where $initial-state
     return 
       if ($transition-target) then 
-        (: 
-        We don't want to go to the initial state in a compound state if our transition target is some other state in
-        that compound target.
-        :)
-        let $non-target-initial := exists($state/element()[@id = $transition-target]) and fn:not($child-state/@id = $transition-target)
+        (: We don't want to go to the initial state in a compound state if our transition target is some other child state in that compound target. :)
+        let $non-target-initial := exists($state/element()[@id = $transition-target]) and fn:not($initial-state/@id = $transition-target)
         where fn:not($non-target-initial)
-        return enter-state($child-state, $transition-target, $session)
+        return enter-state($initial-state, $transition-target, $session)
       else
-        enter-state($child-state, $transition-target, $session)
+        enter-state($initial-state, $transition-target, $session)
   )
 };
 
