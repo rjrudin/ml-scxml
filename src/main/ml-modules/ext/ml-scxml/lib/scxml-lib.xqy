@@ -232,7 +232,7 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
         )[1]
         where $transition
         return (
-          session:set-instance($session, new-exec($transition, $current-state, $session)),
+          session:set-instance($session, execute-transition($transition, $current-state, $session)),
           $transition
         )
       
@@ -247,11 +247,6 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
 
 
 (:
-So when we execute a transition, we first need to determine all the states that are exited and all the states that will
-be entered. And then we fire the onExit block for each of those. Then we remove each of those states from the set of current states on the instance. 
-Then we fire the executable content for each transition. And then we enter each of the new states, adding them to the
-instance, and invoking onEntry for each of them.
-
 TODO A transition can also be on a parallel element.
 TODO A transition can have multiple target states.
 
@@ -259,11 +254,11 @@ TODO A transition can have multiple target states.
 "2) if any compound <state> is in the set and none of its children is in the set, its default initial state(s) are added to the set"
 "Any state whose child(ren) are added to the complete target set by clause 2 is called a default entry state"
 :)
-declare private function new-exec(
+declare private function execute-transition(
   $transition as element(sc:transition),
   $source-state as element(),
   $session as map:map
-  )
+  ) as element(mlsc:instance)
 {
   let $instance := session:get-instance($session)
   let $machine := session:get-machine($session)
@@ -274,26 +269,17 @@ declare private function new-exec(
   
   let $target-state := $machine//(sc:state|sc:final)[@id = $target]
   
-  (: 
-  Now we need to figure out which states that we leave, and in what order, as that's important for onExit reasons.
-  TODO Assuming external for now, need to implement internal as well.
-  :)
+  (: TODO Assuming external for now, need to implement internal as well. :)
   
   let $states-to-exit := find-states-to-exit($source-state, $target-state, $current-states)
   let $states-to-enter := find-states-to-enter($source-state, $target-state)
   
-  (: EXIT STATES :)
-  let $_ := (
+  let $_ :=
     for $state in $states-to-exit
-    let $_ := xdmp:trace($TRACE-EVENT, "Exiting state: " || $state/@id) 
-    return execute-executable-content($state/sc:onexit/element(), $session),
-    session:remove-current-states($session, $states-to-exit/@id/fn:string())
-  )
+    return exit-state($state, $session)
 
-  (: INVOKE TRANSITION LOGIC :)
   let $_ := execute-executable-content($transition/element(), $session)
   
-  (: ENTER STATES :)
   let $entered-states := ()
   let $_ :=  
     for $state in $states-to-enter
@@ -335,21 +321,32 @@ declare private function new-exec(
 };
 
 
+declare private function exit-state(
+  $state as element(),
+  $session as map:map
+  ) as empty-sequence()
+{
+  xdmp:trace($TRACE-EVENT, "Exiting state: " || $state/@id),
+  execute-executable-content($state/sc:onexit/element(), $session),
+  session:remove-current-states($session, $state/@id/fn:string())
+};
+
+
 declare private function raise-events-for-final-states(
   $entered-states as element()*,
   $session as map:map
   ) as empty-sequence()
 {
+  let $instance := session:get-instance($session)
+  let $instance-id := get-instance-id($instance)
+  
   for $state in $entered-states[self::sc:final]
   let $parent := $state/..[self::sc:state]
   where $parent
-  return 
-    let $event-name := "done.state." || $parent/@id
+  return (
     (: TODO Need to test for this :)
-    return (
-      xdmp:trace($TRACE-EVENT, "Raising event " || $event-name || " for instance " || get-instance-id(session:get-instance($session))),
-      session:add-event($session, $event-name, "internal")
-    )
+    add-internal-event($parent, $session)
+  )
 };
 
 
@@ -379,16 +376,26 @@ declare private function exit-parallel-states-as-necessary(
       where fn:not(fn:string($state/@id) = ($current-states, $current-final-id))
       return $state
     where fn:not($final-states-not-yet-reached)
-    return
+    return (
+      add-internal-event($parallel, $session),
+      
       (: When we close out a parallel, we need to remove the child final IDs from the set of current states :)
-      let $event-name := "done.state." || $parallel/@id
-      return (
-        xdmp:trace($TRACE-EVENT, "Raising event " || $event-name || " for instance " || get-instance-id($instance)),
-        session:add-event($session, $event-name, "internal"),
-        
-        let $final-state-ids := $final-states/@id/fn:string()
-        return session:remove-current-states($session, $final-state-ids)
-      )
+      let $final-state-ids := $final-states/@id/fn:string()
+      return session:remove-current-states($session, $final-state-ids)
+    )
+};
+
+
+declare private function add-internal-event(
+  $state as element(),
+  $session as map:map
+  ) as empty-sequence()
+{
+  let $event-name := "done.state." || $state/@id
+  return (
+    xdmp:trace($TRACE-EVENT, "Raising event " || $event-name || " for instance " || get-instance-id(session:get-instance($session))),
+    session:add-event($session, $event-name, "internal")
+  )
 };
 
 
