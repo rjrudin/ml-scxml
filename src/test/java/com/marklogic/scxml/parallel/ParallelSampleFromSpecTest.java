@@ -27,7 +27,6 @@ public class ParallelSampleFromSpecTest extends AbstractScxmlTest {
         Response r = fireEvent(instanceId, event);
         assertResponseHasInstanceIdAndState(r, instanceId, "S12", "S21");
         i = loadInstance(instanceId);
-        i.prettyPrint();
         i.assertCurrentStates("p", "S1", "S12", "S2", "S21");
         i.assertTransitionExists(2, event, "first", "p");
         i.assertTransitionExists(2, event, "first", "S1");
@@ -36,12 +35,11 @@ public class ParallelSampleFromSpecTest extends AbstractScxmlTest {
         i.assertTransitionExists(2, event, "first", "S21");
 
         event = "e1";
-        if (true)
-            return;
 
         fireEvent(instanceId, event);
         i = loadInstance(instanceId);
-        i.assertCurrentStates("p", "S1Final", "S22");
+        // The instance is still in S1 and S1Final until the whole parallel block completes
+        i.assertCurrentStates("p", "S1", "S1Final", "S2", "S22");
         i.assertTransitionExists(3, event, "S12", "S1Final");
         i.assertTransitionExists(4, event, "S21", "S22");
 
@@ -51,6 +49,8 @@ public class ParallelSampleFromSpecTest extends AbstractScxmlTest {
          * transition from "p" to "finalState".
          */
         event = "e2";
+        if (true) return;
+        
         r = fireEvent(instanceId, event);
         i = loadInstance(instanceId);
         i.assertCurrentStates("finalState");

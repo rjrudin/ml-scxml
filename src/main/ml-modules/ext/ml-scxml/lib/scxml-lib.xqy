@@ -75,7 +75,7 @@ declare private function enter-state(
   
   return (
     $state,
-
+    
     (: TODO Support initial element too :)
     let $initial := $state/@initial/fn:string()
     let $child-state := $state/element()[@id = $initial]
@@ -302,6 +302,7 @@ declare private function new-exec(
       let $states := enter-state($state, $target, $session)
       return xdmp:set($entered-states, ($entered-states, $states))
   
+  let $_ := raise-events-for-final-states($entered-states, $session)
   let $_ := session:add-current-states($session, $entered-states/@id/fn:string())
   let $transitions := mlscxp:build-transition($entered-states, $source-state, $transition, $session)
   
@@ -331,41 +332,49 @@ declare private function new-exec(
 };
 
 
+declare private function raise-events-for-final-states(
+  $entered-states as element()*,
+  $session as map:map
+  ) as empty-sequence()
+{
+  for $state in $entered-states[self::sc:final]
+  let $parent := $state/..[self::sc:state]
+  where $parent
+  return 
+    let $event-name := "done.state." || $parent/@id
+    (: TODO Need to test for this :)
+    return (
+      xdmp:trace($TRACE-EVENT, "Raising event " || $event-name || " for instance " || get-instance-id(session:get-instance($session))),
+      session:add-event($session, $event-name, "internal")
+    )
+};
+
+
 (:
   let $states-to-remove := 
-    (: According to the example in 3.1.3 of the spec, we raise an event for the parent state when we reach the final child state :)
-    for $final-state in $new-states[self::sc:final]
-    let $parent := $final-state/..[self::sc:state]
-    where $parent
-    return 
-      let $parent-event-name := "done.state." || $parent/@id
-      return (
-        xdmp:trace($TRACE-EVENT, "Raising event " || $parent-event-name || " for instance " || get-instance-id($instance)),
-        session:add-event($session, $parent-event-name, "internal"),
         
-        (: If this is part of a parallel, and all other parts are final, then raise an event for the parallel too :)
-        let $parallel := $parent/..[self::sc:parallel]
-        where $parallel
-        return
-        
-          let $final-state-ids := $parallel/sc:state/sc:final/@id/fn:string()
-          let $current-states := $instance/mlsc:current-states/mlsc:current-state/fn:string()
-          let $current-final-id := fn:string($final-state/@id)
-          let $unfinished-state-ids := 
-            for $state-id in $final-state-ids
-            where fn:not($state-id = ($current-states, $current-final-id))
-            return $state-id
-          
-          where fn:not($unfinished-state-ids)
-          return
-            (: When we close out a parallel, we need to remove the child final IDs from the set of current states :) 
-            let $parallel-event-name := "done.state." || $parallel/@id
-            return (
-              xdmp:trace($TRACE-EVENT, "Raising event " || $parallel-event-name || " for instance " || get-instance-id($instance)),
-              session:add-event($session, $parallel-event-name, "internal"),
-              $final-state-ids
-            )
-      )
+    let $parallel := $parent/..[self::sc:parallel]
+    where $parallel
+    return
+    
+      let $final-state-ids := $parallel/sc:state/sc:final/@id/fn:string()
+      let $current-states := $instance/mlsc:current-states/mlsc:current-state/fn:string()
+      let $current-final-id := fn:string($final-state/@id)
+      let $unfinished-state-ids := 
+        for $state-id in $final-state-ids
+        where fn:not($state-id = ($current-states, $current-final-id))
+        return $state-id
+      
+      where fn:not($unfinished-state-ids)
+      return
+        (: When we close out a parallel, we need to remove the child final IDs from the set of current states :) 
+        let $parallel-event-name := "done.state." || $parallel/@id
+        return (
+          xdmp:trace($TRACE-EVENT, "Raising event " || $parallel-event-name || " for instance " || get-instance-id($instance)),
+          session:add-event($session, $parallel-event-name, "internal"),
+          $final-state-ids
+        )
+  )
 :)
 
 
