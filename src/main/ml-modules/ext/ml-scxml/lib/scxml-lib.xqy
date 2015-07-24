@@ -172,7 +172,7 @@ declare function find-states-to-enter($source-state, $target-state)
 {
   let $lcca := find-lcca-state(($source-state, $target-state))
   let $target-id := fn:string($target-state/@id)
-  let $target-parent as element() := $lcca/(sc:state|sc:parallel)[@id = $target-id or .//sc:state/@id = $target-id]
+  let $target-parent as element() := $lcca/(sc:state|sc:parallel|sc:final)[@id = $target-id or .//sc:state/@id = $target-id]
   let $target-parent-kids := $target-parent//sc:state[exists(.//sc:state[@id = $target-id])]
   let $parallel-states := 
     if ($target-parent instance of element(sc:parallel)) then 
