@@ -49,12 +49,14 @@ public class ParallelSampleFromSpecTest extends AbstractScxmlTest {
          * transition from "p" to "finalState".
          */
         event = "e2";
-        if (true) return;
         
         r = fireEvent(instanceId, event);
         i = loadInstance(instanceId);
         i.assertCurrentStates("finalState");
         i.assertTransitionExists(5, event, "S22", "S2Final");
         i.assertTransitionExists(6, "done.state.p", "p", "finalState");
+        i.prettyPrint();
+        
+        // TODO Log messages for events that are raised, then we can test for them
     }
 }
