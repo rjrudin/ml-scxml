@@ -357,6 +357,7 @@ declare private function execute-executable-content(
       case element(sc:log) return xdmp:log(xdmp:eval($el/@expr))
       case element(sc:assign) return execute-assign($el, $session)
       case element(sc:script) return execute-script($el, $session)
+      case element(sc:raise) return execute-raise($el, $session)
       default return ()
   
   return ()
@@ -416,6 +417,20 @@ declare private function execute-script(
   xdmp:eval(
     fn:string($script), 
     (xs:QName("session"), $session)
+  )
+};
+
+
+declare private function execute-raise(
+  $raise as element(sc:raise),
+  $session as map:map
+  ) as empty-sequence()
+{
+  let $event := fn:string($raise/@event)
+  where $event
+  return (
+    xdmp:trace($TRACE-EVENT, "Raising event " || $event || " on instance " || get-instance-id(session:get-instance($session))), 
+    session:add-event($session, $event, "external")
   )
 };
 

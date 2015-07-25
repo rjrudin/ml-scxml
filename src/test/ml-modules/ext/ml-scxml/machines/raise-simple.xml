@@ -1,0 +1,34 @@
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" initial="Open">
+  <state id="Open">
+    <transition event="Start" target="In Progress" />
+  </state>
+  <state id="In Progress">
+    <onentry>
+      <script>
+      <![CDATA[
+        import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+        declare variable $session external;
+        lib:log($session, "about to raise e1")
+      ]]>
+      </script>
+      <raise event="e1"/>
+      <script>
+      <![CDATA[
+        import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+        declare variable $session external;
+        lib:log($session, "just raised e1")
+      ]]>
+      </script>
+    </onentry>
+    <transition event="e1" target="Closed">
+      <script>
+      <![CDATA[
+        import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+        declare variable $session external;
+        lib:log($session, "executing e1 transition")
+      ]]>
+      </script>
+    </transition>
+  </state>
+  <final id="Closed"/>
+</scxml>
