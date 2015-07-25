@@ -1,4 +1,4 @@
-package com.marklogic.scxml.onentry;
+package com.marklogic.scxml.execcontent;
 
 import org.junit.Before;
 import org.junit.Test;

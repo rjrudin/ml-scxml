@@ -1,4 +1,4 @@
-package com.marklogic.scxml.onexit;
+package com.marklogic.scxml.execcontent;
 
 import org.junit.Test;
 
