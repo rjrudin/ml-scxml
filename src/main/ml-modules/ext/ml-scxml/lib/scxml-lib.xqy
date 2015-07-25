@@ -358,9 +358,45 @@ declare private function execute-executable-content(
       case element(sc:assign) return execute-assign($el, $session)
       case element(sc:script) return execute-script($el, $session)
       case element(sc:raise) return execute-raise($el, $session)
+      case element(sc:if) return execute-if($el, $session)
       default return ()
   
   return ()
+};
+
+
+declare private function execute-if(
+  $if as element(sc:if),
+  $session as map:map
+  ) as empty-sequence()
+{
+  let $cond := $if/@cond/fn:string()
+  return
+    if ($cond) then
+      let $instance := session:get-instance($session)
+      let $datamodel := get-datamodel($instance)
+    
+      let $vars := 
+        for $data in $datamodel/sc:data
+        let $id := fn:string($data/@id)
+        return (xs:QName($id), $data)
+  
+      let $xquery := text {
+        'xquery version "1.0-ml"; ',
+        for $data in $datamodel/sc:data
+        let $id := fn:string($data/@id)
+        return 'declare variable $' || $id || ' external; ',
+        'fn:exists(' || $cond || ')'
+      }
+      
+      let $_ := xdmp:trace($TRACE-EVENT, "Executing xquery for 'if' element: " || $xquery)
+      
+      where xdmp:eval($xquery, $vars)
+      return
+        for $el in $if/element()
+        return execute-executable-content($el, $session)
+    else
+      xdmp:trace($TRACE-EVENT, ("No 'cond' attribute found in if element, so ignoring", $if))
 };
 
 

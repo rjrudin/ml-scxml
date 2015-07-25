@@ -1,0 +1,14 @@
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" initial="first" datamodel="xpath">
+  <datamodel>
+    <data id="ticket">
+      <price xmlns="">0</price>
+    </data>
+  </datamodel>
+  <state id="first">
+    <onentry>
+      <if cond="$ticket[price = 0]">
+        <assign location="$ticket/price" expr="'10'" />
+      </if>
+    </onentry>
+  </state>
+</scxml>
