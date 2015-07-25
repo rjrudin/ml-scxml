@@ -61,4 +61,8 @@ public class Instance extends Fragment {
         assertElementExists(message, format(xpath, count));
         assertElementMissing(message, format(xpath, count + 1));
     }
+    
+    public void assertTestMessageExists(int position, String message) {
+        assertElementExists(format("/mlsc:instance/message[%d][. = '%s']", position, message));
+    }
 }
