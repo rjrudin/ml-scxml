@@ -371,17 +371,42 @@ declare private function execute-if(
   $session as map:map
   ) as empty-sequence()
 {
-  let $cond := $if/@cond/fn:string()
+  let $instance := session:get-instance($session)
+  let $datamodel := get-datamodel($instance)
+  
   return
-    if ($cond) then
-      let $instance := session:get-instance($session)
-      let $datamodel := get-datamodel($instance)
-    
+    if (evaluate-conditional($if, $datamodel)) then 
+      execute-conditional-content($if, 1, $session)
+    else
+      let $executed := fn:false()
+      
+      for $el at $index in $if/element()
+      where fn:not($executed) and ($el instance of element(sc:elseif) or $el instance of element(sc:else))
+      return
+        let $result :=
+          if ($el instance of element(sc:else)) then fn:true()
+          else evaluate-conditional($el, $datamodel)
+        where $result
+        return (
+          xdmp:set($executed, fn:true()),
+          execute-conditional-content($if, $index + 1, $session)
+        )
+};
+
+
+declare private function evaluate-conditional(
+  $el as element(),
+  $datamodel as element(sc:datamodel)
+  ) as xs:boolean
+{
+  let $cond := $el/@cond/fn:string()
+  return
+    if ($cond) then 
       let $vars := 
         for $data in $datamodel/sc:data
         let $id := fn:string($data/@id)
         return (xs:QName($id), $data)
-  
+    
       let $xquery := text {
         'xquery version "1.0-ml"; ',
         for $data in $datamodel/sc:data
@@ -390,14 +415,31 @@ declare private function execute-if(
         'fn:exists(' || $cond || ')'
       }
       
-      let $_ := xdmp:trace($TRACE-EVENT, "Executing xquery for 'if' element: " || $xquery)
-      
-      where xdmp:eval($xquery, $vars)
-      return
-        for $el in $if/element()
-        return execute-executable-content($el, $session)
+      return (
+        xdmp:trace($TRACE-EVENT, "Executing xquery for conditional element: " || $xquery),
+        xdmp:eval($xquery, $vars)
+      )
     else
-      xdmp:trace($TRACE-EVENT, ("No 'cond' attribute found in if element, so ignoring", $if))
+      xdmp:trace($TRACE-EVENT, ("No 'cond' attribute found in element, so ignoring", $el))
+};
+
+
+declare private function execute-conditional-content(
+  $if as element(sc:if),
+  $start as xs:integer,
+  $session as map:map
+  ) as empty-sequence()
+{
+  let $els := $if/element()[$start to fn:last()]
+  let $partition := (
+    for $el at $index in $els
+    where $el instance of element(sc:elseif) or $el instance of element(sc:else)
+    return $index,
+    count($els)
+  )[1]
+  
+  for $el in $els[1 to $partition]
+  return execute-executable-content($el, $session)
 };
 
 

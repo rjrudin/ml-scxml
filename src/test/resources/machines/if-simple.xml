@@ -5,10 +5,44 @@
     </data>
   </datamodel>
   <state id="first">
-    <onentry>
+    <transition event="e1" target="first">
       <if cond="$ticket[price = 0]">
         <assign location="$ticket/price" expr="'10'" />
+        <script>
+        <![CDATA[
+          import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+          declare variable $session external;
+          lib:log($session, "setting price to 10")
+        ]]>
+        </script>
+        <elseif cond="$ticket[price = 10]" />
+        <assign location="$ticket/price" expr="'20'" />
+        <script>
+        <![CDATA[
+          import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+          declare variable $session external;
+          lib:log($session, "setting price to 20")
+        ]]>
+        </script>
+        <elseif cond="$ticket[price = 20]" />
+        <assign location="$ticket/price" expr="'30'" />
+        <script>
+        <![CDATA[
+          import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+          declare variable $session external;
+          lib:log($session, "setting price to 30")
+        ]]>
+        </script>
+        <else />
+        <assign location="$ticket/price" expr="'0'" />
+        <script>
+        <![CDATA[
+          import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+          declare variable $session external;
+          lib:log($session, "setting price to 0")
+        ]]>
+        </script>
       </if>
-    </onentry>
+    </transition>
   </state>
 </scxml>
