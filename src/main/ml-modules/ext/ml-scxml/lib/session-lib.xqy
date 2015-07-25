@@ -28,6 +28,7 @@ declare function new(
     map:entry("_x",
       map:new((
         map:entry("instance", $instance),
+        map:entry("current-states", $instance/mlsc:current-states/mlsc:current-state/fn:string()),
         map:entry("machine", $machine),
         map:entry("events", $event)
       ))
@@ -72,6 +73,29 @@ declare function get-current-event($session as map:map) as element(event)?
 declare function get-events($session as map:map) as element(event)*
 {
   map:get(get-xmap($session), "events")
+};
+
+declare function get-current-states($session as map:map) as xs:string*
+{
+  map:get(get-xmap($session), "current-states")
+};
+
+declare function remove-current-states($session as map:map, $states-to-remove as xs:string*) as empty-sequence()
+{
+  map:put(
+    get-xmap($session),
+    "current-states",
+    get-current-states($session)[fn:not(. = $states-to-remove)]
+  )
+};
+
+declare function add-current-states($session as map:map, $states-to-add as xs:string*) as empty-sequence()
+{
+  map:put(
+    get-xmap($session),
+    "current-states",
+    (get-current-states($session), $states-to-add)
+  )
 };
 
 declare function add-event(

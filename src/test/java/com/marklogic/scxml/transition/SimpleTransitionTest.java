@@ -18,17 +18,17 @@ public class SimpleTransitionTest extends AbstractScxmlTest {
         Instance i = loadInstance(id);
         i.assertMachineId(machineId);
         i.assertInstanceId(id);
-        i.assertActiveState("Open");
+        i.assertCurrentState("Open");
         i.assertTransitionExists(1, "Open");
 
         fireEvent(id, "Start");
         i = loadInstance(id);
-        i.assertActiveState("In Progress");
+        i.assertCurrentState("In Progress");
         i.assertTransitionExists(2, "Start", "Open", "In Progress");
 
         fireEvent(id, "Finish");
         i = loadInstance(id);
-        i.assertActiveState("Closed");
+        i.assertCurrentState("Closed");
         i.assertTransitionExists(2, "Start", "Open", "In Progress");
         i.assertTransitionExists(3, "Finish", "In Progress", "Closed");
     }
@@ -45,7 +45,7 @@ public class SimpleTransitionTest extends AbstractScxmlTest {
         fireEvent(id, "Unknown");
 
         Instance i = loadInstance(id);
-        i.assertActiveState("Open");
+        i.assertCurrentState("Open");
         i.assertTransitionExists(1, "Open");
         i.assertTransitionCount("Should just have the one transition from when the instance started", 1);
     }

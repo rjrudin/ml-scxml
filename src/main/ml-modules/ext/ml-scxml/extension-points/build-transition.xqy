@@ -12,29 +12,28 @@ declare namespace mlsc = "http://marklogic.com/scxml";
 declare namespace sc = "http://www.w3.org/2005/07/scxml";
 
 
+(:
+$source-state and $transition will be empty in case the instance just started up.
+:)
 declare function build-transition(
-  $new-states as element()+,
-  $current-state as element()?,
+  $entered-states as element()+,
+  $source-state as element()?,
   $transition as element(sc:transition)?,
   $session as map:map
   ) as element(mlsc:transition)
 {
-  (: 
-  Using attributes for states here, as I don't think we'd want them to hit on free text searches
-  TODO Unique QName based on "to" state, or stick with generic QName?
-  :)
   <mlsc:transition date-time="{fn:current-dateTime()}">
     {
     let $event := $transition/@event/fn:string()
     where $event
     return attribute event {$event},
     
-    if ($current-state) then 
-      <mlsc:from state="{fn:string($current-state/@id)}"/>
+    if ($source-state) then 
+      <mlsc:from state="{fn:string($source-state/@id)}"/>
     else (),
     
-    for $new-state in $new-states
-    return <mlsc:to state="{fn:string($new-state/@id)}"/> 
+    for $state in $entered-states
+    return <mlsc:to state="{fn:string($state/@id)}"/> 
     }
   </mlsc:transition>
 };

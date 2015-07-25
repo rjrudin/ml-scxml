@@ -6,7 +6,15 @@
 
   <parallel id="p">
 
-    <transition event="done.state.p" target="finalState" />
+    <transition event="done.state.p" target="finalState">
+      <script>
+      <![CDATA[
+        import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+        declare variable $session external;
+        lib:log($session, "transitioning to finalState")
+      ]]>
+      </script>
+    </transition>
 
     <state id="S1" initial="S11">
       <state id="S11">
@@ -15,7 +23,26 @@
       <state id="S12">
         <transition event="e1" target="S1Final" />
       </state>
-      <final id="S1Final" />
+      <final id="S1Final">
+        <onexit>
+          <script>
+          <![CDATA[
+            import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+            declare variable $session external;
+            lib:log($session, "leaving S1Final")
+          ]]>
+          </script>
+        </onexit>
+      </final>
+      <onexit>
+        <script>
+        <![CDATA[
+          import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+          declare variable $session external;
+          lib:log($session, "leaving S1")
+        ]]>
+        </script>
+      </onexit>
     </state>
 
     <state id="S2" initial="S21">
@@ -25,14 +52,49 @@
       <state id="S22">
         <transition event="e2" target="S2Final" />
       </state>
-      <final id="S2Final" />
+      <final id="S2Final">
+        <onexit>
+          <script>
+          <![CDATA[
+            import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+            declare variable $session external;
+            lib:log($session, "leaving S2Final")
+          ]]>
+          </script>
+        </onexit>
+      </final>
+      <onexit>
+        <script>
+        <![CDATA[
+          import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+          declare variable $session external;
+          lib:log($session, "leaving S2")
+        ]]>
+        </script>
+      </onexit>
     </state>
-
+    
+    <onexit>
+      <script>
+      <![CDATA[
+        import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+        declare variable $session external;
+        lib:log($session, "leaving p")
+      ]]>
+      </script>
+    </onexit>
+      
   </parallel>
 
   <final id="finalState">
     <onentry>
-      <log expr="'All done!'" />
+      <script>
+      <![CDATA[
+        import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+        declare variable $session external;
+        lib:log($session, "entering finalState")
+      ]]>
+      </script>
     </onentry>
   </final>
 

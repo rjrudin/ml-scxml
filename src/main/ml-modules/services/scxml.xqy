@@ -42,10 +42,10 @@ declare private function instance-to-json($instance as element(mlsc:instance)) a
       let $o := json:object()
       return (
         map:put($o, "instanceId", mlsc:get-instance-id($instance)),
-        map:put($o, "active-states", 
+        map:put($o, "current-states", 
           let $array := json:array()
           return (
-            for $state in mlsc:get-active-states($instance)
+            for $state in mlsc:get-current-states($instance)
             return json:array-push($array, $state),
             $array
           )

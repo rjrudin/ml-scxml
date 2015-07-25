@@ -1,0 +1,106 @@
+<scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0" initial="S" datamodel="xpath">
+
+  <state id="S" initial="s1">
+
+    <state id="s1" initial="s11">
+      <onexit>
+        <script>
+        <![CDATA[
+          import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+          declare variable $session external;
+          lib:log($session, "leaving s1")
+        ]]>
+        </script>
+      </onexit>
+
+      <state id="s11">
+        <onexit>
+          <script>
+          <![CDATA[
+            import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+            declare variable $session external;
+            lib:log($session, "leaving s11")
+          ]]>
+          </script>
+        </onexit>
+      </state>
+
+      <transition event="e" target="s21">
+        <script>
+        <![CDATA[
+          import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+          declare variable $session external;
+          lib:log($session, "executing e transition")
+        ]]>
+        </script>
+      </transition>
+    </state>
+
+    <state id="s2" initial="s21">
+      <state id="s21">
+        <onentry>
+          <script>
+          <![CDATA[
+            import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+            declare variable $session external;
+            lib:log($session, "entering s21")
+          ]]>
+          </script>
+        </onentry>
+        <transition event="e2" target="finalState">
+          <script>
+          <![CDATA[
+            import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+            declare variable $session external;
+            lib:log($session, "executing e2 transition")
+          ]]>
+          </script>
+        </transition>
+      </state>
+      <onentry>
+        <script>
+        <![CDATA[
+          import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+          declare variable $session external;
+          lib:log($session, "entering s2")
+        ]]>
+        </script>
+      </onentry>
+    </state>
+
+    <onentry>
+      <script>
+      <![CDATA[
+        import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+        declare variable $session external;
+        lib:log($session, "entering S")
+      ]]>
+      </script>
+    </onentry>
+
+    <onexit>
+      <script>
+      <![CDATA[
+        import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+        declare variable $session external;
+        lib:log($session, "leaving S")
+      ]]>
+      </script>
+    </onexit>
+
+  </state>
+
+  <final id="finalState">
+    <onentry>
+      <script>
+      <![CDATA[
+        import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+        declare variable $session external;
+        lib:log($session, "entering finalState")
+      ]]>
+      </script>
+    </onentry>
+
+  </final>
+
+</scxml>

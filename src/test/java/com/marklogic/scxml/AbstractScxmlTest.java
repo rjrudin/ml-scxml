@@ -83,9 +83,9 @@ public abstract class AbstractScxmlTest extends AbstractSpringTest {
     protected void assertResponseHasInstanceIdAndState(Response r, String instanceId, String... states) {
         JsonPath json = r.jsonPath();
         assertEquals(instanceId, json.getString("instanceId"));
-        List<String> stateList = json.getList("active-states", String.class);
+        List<String> stateList = json.getList("current-states", String.class);
         for (String state : states) {
-            assertTrue(format("Did not find expected state %s in active-states: " + states, state),
+            assertTrue(format("Did not find expected state %s in current-states: " + states, state),
                     stateList.contains(state));
         }
     }
