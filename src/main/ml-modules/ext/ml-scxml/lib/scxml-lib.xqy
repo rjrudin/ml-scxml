@@ -15,16 +15,17 @@ declare variable $TRACE-EVENT := "ml-scxml";
 
 
 declare function start(
-  $machine-id as xs:string,
   $machine as element(sc:scxml),
   $instance-id as xs:string
   ) as element(mlsc:instance)
 {
-  xdmp:trace($TRACE-EVENT, "Starting machine with id " || $machine-id),
+  xdmp:trace($TRACE-EVENT, "Starting machine with id " || $machine/@id),
 
   let $instance := element mlsc:instance {
     attribute created-date-time {fn:current-dateTime()},
-    element mlsc:machine-id {$machine-id},
+    let $id := $machine/@id/fn:string()
+    where $id
+    return element mlsc:machine-id {$id},
     element mlsc:instance-id {$instance-id},
     element mlsc:current-states {},  
     let $data := $machine//sc:datamodel/sc:data
@@ -64,8 +65,8 @@ declare function start(
 Starts a new session and processes the given event. 
 :)
 declare function handle-event(
-  $instance as element(mlsc:instance),
   $machine as element(sc:scxml),
+  $instance as element(mlsc:instance),
   $event-name as xs:string
   ) as element(mlsc:instance)
 {
@@ -477,7 +478,7 @@ declare function get-instance-id($instance as element(mlsc:instance)) as xs:stri
 };
 
 
-declare function get-machine-id($instance as element(mlsc:instance)) as xs:string
+declare function get-machine-id($instance as element(mlsc:instance)) as xs:string?
 {
   $instance/mlsc:machine-id/fn:string()
 };

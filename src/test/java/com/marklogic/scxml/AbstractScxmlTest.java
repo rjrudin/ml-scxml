@@ -2,13 +2,14 @@ package com.marklogic.scxml;
 
 import static com.jayway.restassured.RestAssured.basic;
 import static com.jayway.restassured.RestAssured.get;
-import static com.jayway.restassured.RestAssured.post;
 
 import java.util.List;
 
 import org.junit.Before;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestExecutionListeners;
+import org.springframework.util.FileCopyUtils;
 
 import com.jayway.restassured.RestAssured;
 import com.jayway.restassured.path.json.JsonPath;
@@ -29,6 +30,9 @@ public abstract class AbstractScxmlTest extends AbstractSpringTest {
     protected final static String SERVICE_PATH = "/v1/resources/scxml";
 
     private static boolean restAssuredInitialized = false;
+
+    // Populated when startMachine is called
+    private String testMachine;
 
     @Before
     public void initializeRestAssured() {
@@ -53,7 +57,13 @@ public abstract class AbstractScxmlTest extends AbstractSpringTest {
     }
 
     protected String startMachineWithId(String machineId) {
-        Response r = postToService("rs:machineId=" + machineId);
+        String path = "machines/" + machineId + ".xml";
+        try {
+            testMachine = new String(FileCopyUtils.copyToByteArray(new ClassPathResource(path).getFile()));
+        } catch (Exception e) {
+            throw new RuntimeException("Unable to find state machine on classpath with path: " + path, e);
+        }
+        Response r = postToService("");
         assertTrue(r.getContentType().startsWith("application/json"));
         return r.jsonPath().getString("instanceId");
     }
@@ -63,7 +73,11 @@ public abstract class AbstractScxmlTest extends AbstractSpringTest {
     }
 
     protected Response postToService(String querystring) {
-        Response r = post(SERVICE_PATH + "?" + querystring);
+        String path = SERVICE_PATH;
+        if (querystring != null && querystring.trim().length() > 0) {
+            path += "?" + querystring;
+        }
+        Response r = RestAssured.given().body(testMachine).contentType("application/xml").post(path);
         try {
             assertEquals(200, r.getStatusCode());
             return r;

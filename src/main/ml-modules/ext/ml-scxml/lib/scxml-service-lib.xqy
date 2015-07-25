@@ -8,7 +8,6 @@ Clients can then interact with scxml-lib when not seeking any persistence operat
 module namespace mlsc = "http://marklogic.com/scxml";
 
 import module namespace mlsc = "http://marklogic.com/scxml" at "/ext/ml-scxml/lib/scxml-lib.xqy";
-import module namespace mlscxp = "http://marklogic.com/scxml/extension-points" at "/ext/ml-scxml/extension-points/find-machine.xqy";
 import module namespace sem = "http://marklogic.com/semantics" at "/MarkLogic/semantics.xqy";
 
 declare namespace sc = "http://www.w3.org/2005/07/scxml";
@@ -17,10 +16,9 @@ declare namespace sc = "http://www.w3.org/2005/07/scxml";
 (:
 Start a new instance of the machine with the given ID. Returns the new instance.
 :)
-declare function start($machine-id as xs:string) as element(mlsc:instance) {
-  let $machine := mlscxp:find-machine($machine-id)
+declare function start($machine as element(sc:scxml)) as element(mlsc:instance) {
   let $instance-id := new-instance-id()
-  let $instance := mlsc:start($machine-id, $machine, $instance-id)
+  let $instance := mlsc:start($machine, $instance-id)
   let $uri := build-instance-uri($instance-id)
   return (
     xdmp:document-insert($uri, $instance, (xdmp:permission("rest-reader", "read"), xdmp:permission("rest-writer", "update"))),
@@ -32,14 +30,14 @@ declare function start($machine-id as xs:string) as element(mlsc:instance) {
 (:
 Trigger the given event on the instance with the given ID. Returns the updated instance.
 :)
-declare function handle-event(
+declare function handle-event-and-update(
+  $machine as element(sc:scxml),
   $instance-id as xs:string,
   $event-name as xs:string
   ) as element(mlsc:instance)
 {
   let $instance := get-instance($instance-id)
-  let $machine := mlscxp:find-machine(get-machine-id($instance))
-  let $new-instance := mlsc:handle-event($instance, $machine, $event-name)
+  let $new-instance := mlsc:handle-event($machine, $instance, $event-name)
   let $_ := xdmp:node-replace($instance, $new-instance)
   return $new-instance
 };

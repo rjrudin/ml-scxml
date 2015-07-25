@@ -5,6 +5,7 @@ module namespace resource = "http://marklogic.com/rest-api/resource/scxml";
 import module namespace mlsc = "http://marklogic.com/scxml" at "/ext/ml-scxml/lib/scxml-service-lib.xqy", "/ext/ml-scxml/lib/scxml-lib.xqy";
 
 declare namespace rapi = "http://marklogic.com/rest-api";
+declare namespace sc = "http://www.w3.org/2005/07/scxml";
 
 declare function get(
   $context as map:map,
@@ -17,21 +18,28 @@ declare function get(
   }
 };
 
+
+(:
+For now, expecting the input to be the state machine. A different endpoint could be constructed that instead takes a
+parameter that is used to find the machine document in MarkLogic.
+:)
 declare %rapi:transaction-mode("update") function post(
   $context as map:map,
   $params  as map:map,
   $input   as document-node()*
   ) as document-node()*
 {
+  let $machine := $input/sc:scxml
+  
   let $instance-id := map:get($params, "instanceId")
   return
     if ($instance-id) then 
       instance-to-json(
-        mlsc:handle-event($instance-id, map:get($params, "event"))
+        mlsc:handle-event-and-update($machine, $instance-id, map:get($params, "event"))
       )
     else
       instance-to-json(
-        mlsc:start(map:get($params, "machineId"))
+        mlsc:start($machine)
       )
 };
 
