@@ -45,10 +45,14 @@ public class Instance extends Fragment {
     }
 
     public void assertTransitionExists(int position, String event, String fromState, String toState) {
-        if (fromState == null || event == null) {
+        if (fromState == null && event == null) {
             assertElementExists(format(
                     "/mlsc:instance/mlsc:transitions/mlsc:transition[%d][not(mlsc:from) and mlsc:to/@state = '%s' and @date-time != '']",
                     position, toState));
+        } else if (event == null) {
+            assertElementExists(format(
+                    "/mlsc:instance/mlsc:transitions/mlsc:transition[%d][not(@event) and @date-time != '' and mlsc:from/@state = '%s' and mlsc:to/@state = '%s']",
+                    position, fromState, toState));
         } else {
             assertElementExists(format(
                     "/mlsc:instance/mlsc:transitions/mlsc:transition[%d][@event = '%s' and @date-time != '' and mlsc:from/@state = '%s' and mlsc:to/@state = '%s']",
@@ -61,7 +65,7 @@ public class Instance extends Fragment {
         assertElementExists(message, format(xpath, count));
         assertElementMissing(message, format(xpath, count + 1));
     }
-    
+
     public void assertTestMessageExists(int position, String message) {
         assertElementExists(format("/mlsc:instance/message[%d][. = '%s']", position, message));
     }

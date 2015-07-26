@@ -16,9 +16,9 @@ declare namespace sc = "http://www.w3.org/2005/07/scxml";
 $source-state and $transition will be empty in case the instance just started up.
 :)
 declare function build-transition(
-  $entered-states as element()+,
   $source-state as element()?,
   $transition as element(sc:transition)?,
+  $entered-states as element()+,
   $session as map:map
   ) as element(mlsc:transition)
 {

@@ -12,11 +12,13 @@ public class ExecuteTransitionWithConditionTest extends AbstractScxmlTest {
         String id = startMachineWithId("conditional-transaction");
         Instance i = loadInstance(id);
         i.assertCurrentStates("b");
+        i.assertTransitionExists(1, "a");
+        i.assertTransitionExists(2, null, "a", "b");
+        i.prettyPrint();
 
-        // fireEvent(id, "t2");
-        // i.assertCurrentStates("e1");
-        //
-        // fireEvent(id, "t3");
-        // i.assertCurrentStates("f2");
+        // fireEvent(id, "t1");
+        // i = loadInstance(id);
+        // i.assertCurrentStates("d1");
+        // i.prettyPrint();
     }
 }

@@ -40,6 +40,10 @@ declare function start(
 
   let $entered-states := enter-state($initial-state, (), $session)
   
+  let $_ := 
+    for $state in $entered-states 
+    return execute-default-transitions($state, $session)
+  
   let $instance := session:get-instance($session)
   
   (: TODO Make convenience function for updating the instance with the new transition, can reuse here and in execute-transition :)
@@ -50,7 +54,9 @@ declare function start(
       case element(mlsc:transitions) return 
         element {fn:node-name($node)} {
           $node/@*,
-          mlscxp:build-transition($entered-states, (), (), $session)
+          (: Put our "start" transition first, before any default transitions that occurred as a result of the "start" transition :)
+          mlscxp:build-transition((), (), $entered-states, $session),
+          $node/node()
         }
       default return $node
   }
@@ -213,8 +219,12 @@ declare private function execute-transition(
   
   let $_ := handle-final-states($entered-states, $session)
   
-  (: Add a new transition element to the instance :)
-  let $transitions := mlscxp:build-transition($entered-states, $source-state, $transition, $session)
+  (: TODO
+  let $_ := execute-default-transitions($entered-states, $session)
+  :)
+  
+  let $transitions := mlscxp:build-transition($source-state, $transition, $entered-states, $session)
+  
   let $instance := session:get-instance($session)
   return session:set-instance($session, 
     element {fn:node-name($instance)} {
@@ -252,14 +262,7 @@ declare private function enter-state(
   
   let $_ := (
     session:add-current-states($session, $state/@id/fn:string()),
-    execute-executable-content($state/sc:onentry/element(), $session),
-    
-    let $default-transition := $state/sc:transition[fn:not(@cond) and fn:not(@event)][1]
-    where $default-transition
-    return (
-      xdmp:trace($TRACE-EVENT, "Executing default transition for state " || $state/@id),
-      execute-transition($default-transition, $state, $session)
-    )
+    execute-executable-content($state/sc:onentry/element(), $session)
   )
   
   return (
@@ -279,6 +282,21 @@ declare private function enter-state(
         return enter-state($initial-state, $transition-target, $session)
       else
         enter-state($initial-state, $transition-target, $session)
+  )
+};
+
+
+declare private function execute-default-transitions(
+  $entered-states as element()+,
+  $session as map:map
+  ) as empty-sequence()
+{
+  for $state in $entered-states
+  let $default-transition := $state/sc:transition[fn:not(@cond) and fn:not(@event)][1]
+  where $default-transition
+  return (
+    xdmp:trace($TRACE-EVENT, "Executing default transition for state " || $state/@id),
+    execute-transition($default-transition, $state, $session)
   )
 };
 
