@@ -126,7 +126,14 @@ declare function add-current-states($session as map:map, $states-to-add as xs:st
             where fn:not($state = $kid/mlsc:current-state/fn:string())
             return element mlsc:current-state {$state}
           }
-        default return $kid
+        default return $kid,
+      
+      if (fn:not($instance/mlsc:current-states)) then
+        element mlsc:current-states {
+          for $state in $states-to-add
+          return element mlsc:current-state {$state}
+        } 
+      else ()
     } 
   )
 };

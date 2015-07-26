@@ -42,16 +42,11 @@ declare function start(
   
   let $instance := session:get-instance($session)
   
+  (: TODO Make convenience function for updating the instance with the new transition, can reuse here and in execute-transition :)
   return element mlsc:instance {
     $instance/@*,
     for $node in $instance/node()
     return typeswitch($node)
-      case element(mlsc:current-states) return 
-        element {fn:node-name($node)} {
-          $node/@*,
-          for $state in $entered-states
-          return element mlsc:current-state {$state/@id/fn:string()}
-        }
       case element(mlsc:transitions) return 
         element {fn:node-name($node)} {
           $node/@*,
@@ -257,15 +252,15 @@ declare private function enter-state(
   
   let $_ := (
     session:add-current-states($session, $state/@id/fn:string()),
-    execute-executable-content($state/sc:onentry/element(), $session)
-  )
-  
-  (:
-  let $_ := 
+    execute-executable-content($state/sc:onentry/element(), $session),
+    
     let $default-transition := $state/sc:transition[fn:not(@cond) and fn:not(@event)][1]
     where $default-transition
-    return execute-transition($default-transition, $state, $session)
-  :)
+    return (
+      xdmp:trace($TRACE-EVENT, "Executing default transition for state " || $state/@id),
+      execute-transition($default-transition, $state, $session)
+    )
+  )
   
   return (
     $state,
