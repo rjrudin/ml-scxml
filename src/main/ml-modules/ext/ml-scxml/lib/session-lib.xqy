@@ -86,6 +86,21 @@ declare function remove-current-states($session as map:map, $states-to-remove as
     get-xmap($session),
     "current-states",
     get-current-states($session)[fn:not(. = $states-to-remove)]
+  ),
+  
+  let $instance := get-instance($session)
+  return set-instance($session,
+    element {fn:node-name($instance)} {
+      $instance/@*,
+      for $kid in $instance/node()
+      return typeswitch($kid)
+        case element(mlsc:current-states) return
+          element {fn:node-name($kid)} {
+            $kid/@*,
+            $kid/element()[fn:not(. = $states-to-remove)]
+          }
+        default return $kid
+    } 
   )
 };
 
@@ -95,6 +110,24 @@ declare function add-current-states($session as map:map, $states-to-add as xs:st
     get-xmap($session),
     "current-states",
     (get-current-states($session), $states-to-add)
+  ),
+  
+  let $instance := get-instance($session)
+  return set-instance($session,
+    element {fn:node-name($instance)} {
+      $instance/@*,
+      for $kid in $instance/node()
+      return typeswitch($kid)
+        case element(mlsc:current-states) return
+          element {fn:node-name($kid)} {
+            $kid/@*,
+            $kid/node(),
+            for $state in $states-to-add
+            where fn:not($state = $kid/mlsc:current-state/fn:string())
+            return element mlsc:current-state {$state}
+          }
+        default return $kid
+    } 
   )
 };
 

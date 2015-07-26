@@ -160,7 +160,7 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
         )[1]
         where $transition
         return (
-          session:set-instance($session, execute-transition($transition, $current-state, $session)),
+          execute-transition($transition, $current-state, $session),
           $transition
         )
       
@@ -185,7 +185,7 @@ declare private function execute-transition(
   $transition as element(sc:transition),
   $source-state as element(),
   $session as map:map
-  ) as element(mlsc:instance)
+  ) as empty-sequence()
 {
   let $instance := session:get-instance($session)
   let $machine := session:get-machine($session)
@@ -216,40 +216,36 @@ declare private function execute-transition(
       let $states := enter-state($state, $target, $session)
       return xdmp:set($entered-states, ($entered-states, $states))
   
-  let $_ := session:add-current-states($session, $entered-states/@id/fn:string())
-
   let $_ := handle-final-states($entered-states, $session)
   
+  (: Add a new transition element to the instance :)
   let $transitions := mlscxp:build-transition($entered-states, $source-state, $transition, $session)
-  
   let $instance := session:get-instance($session)
-  
-  return element {fn:node-name($instance)} {
-    $instance/@*,
-    
-    for $kid in $instance/element()
-    return typeswitch($kid)
-      case element(mlsc:current-states) return 
-        element mlsc:current-states {
-          for $state in session:get-current-states($session)
-          return element mlsc:current-state {$state}
-        }
-      case element(mlsc:transitions) return 
-        element mlsc:transitions {
-          $kid/*,
-          $transitions
-        }
-      default return $kid,
+  return session:set-instance($session, 
+    element {fn:node-name($instance)} {
+      $instance/@*,
       
-    if (fn:not($instance/mlsc:transitions)) then 
-      element mlsc:transitions {$transitions}
-    else ()
-  }
+      for $kid in $instance/element()
+      return typeswitch($kid)
+        case element(mlsc:transitions) return 
+          element mlsc:transitions {
+            $kid/*,
+            $transitions
+          }
+        default return $kid,
+        
+      if (fn:not($instance/mlsc:transitions)) then 
+        element mlsc:transitions {$transitions}
+      else ()
+    }
+  )
 };
 
 
 (:
 Returns a sequence containing the ID of each state that was entered.
+
+So we can say - if the state has transitions with no condition or event, grab the first one and execute it. 
 :)
 declare private function enter-state(
   $state as element(), 
@@ -259,7 +255,17 @@ declare private function enter-state(
 {
   xdmp:trace($TRACE-EVENT, "Entering state: " || $state/@id),
   
-  let $_ := execute-executable-content($state/sc:onentry/element(), $session)
+  let $_ := (
+    session:add-current-states($session, $state/@id/fn:string()),
+    execute-executable-content($state/sc:onentry/element(), $session)
+  )
+  
+  (:
+  let $_ := 
+    let $default-transition := $state/sc:transition[fn:not(@cond) and fn:not(@event)][1]
+    where $default-transition
+    return execute-transition($default-transition, $state, $session)
+  :)
   
   return (
     $state,
