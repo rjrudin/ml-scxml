@@ -80,11 +80,32 @@ declare function handle-event(
 };
 
 
+(:
+TODO Initial elements pose a problem here because they don't allow an "id" attribute, but that's what we're using for
+finding the LCCA and then finding states to exit.
+:)
 declare function find-states-to-exit($source-state, $target-state, $current-states)
 {
-  let $source-id := fn:string($source-state/@id)
+  xdmp:trace($TRACE-EVENT, "Finding states to exit for source state '" || $source-state/@id || "' and target state '" || $target-state/@id || "'"),
+  
   let $lcca := find-lcca-state(($source-state, $target-state))
-  let $source-parent as element() := $lcca/(sc:state|sc:initial|sc:parallel)[@id = $source-id or .//sc:state/@id = $source-id]
+  
+  let $source-parent as element() :=
+    if ($source-state instance of element(sc:initial)) then 
+      $source-state/..
+    else
+      let $source-id := fn:string($source-state/@id) 
+      return $lcca/(sc:state|sc:initial|sc:parallel)[@id = $source-id or .//sc:state/@id = $source-id]
+
+  (:
+  If the source parent is a compound state and we're transitioning from one child state to another, don't
+  exit the parent state.
+  :)
+  let $is-compound-parent-of-both-source-and-target :=
+    $source-parent instance of element(sc:state) and
+    $source-parent//element()[@id = $target-state/@id]
+  
+  where fn:not($is-compound-parent-of-both-source-and-target)
   
   return fn:reverse((
     $source-parent,

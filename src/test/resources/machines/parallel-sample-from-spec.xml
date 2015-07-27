@@ -1,8 +1,8 @@
 <scxml xmlns="http://www.w3.org/2005/07/scxml" version="1.0">
 
-  <initial id="first">
+  <state id="first">
     <transition event="e" target="S12" />
-  </initial>
+  </state>
 
   <parallel id="p">
 
