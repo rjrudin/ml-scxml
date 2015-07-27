@@ -14,6 +14,9 @@ declare namespace sc = "http://www.w3.org/2005/07/scxml";
 declare variable $TRACE-EVENT := "ml-scxml";
 
 
+(:
+Start and return a new instance of the given machine definition.
+:)
 declare function start(
   $machine as element(sc:scxml),
   $instance-id as xs:string
@@ -54,7 +57,7 @@ declare function start(
       case element(mlsc:transitions) return 
         element {fn:node-name($node)} {
           $node/@*,
-          (: Put our "start" transition first, before any default transitions that occurred as a result of the "start" transition :)
+          (: Put our "start" transition first, before default transitions that occurred as a result of the "start" transition :)
           mlscxp:build-transition((), (), $entered-states, $session),
           $node/node()
         }
@@ -62,8 +65,9 @@ declare function start(
   }
 };
 
+
 (:
-Starts a new session and processes the given event. 
+Starts a new session and processes the given event, returning the updated (but not persisted) instance.
 :)
 declare function handle-event(
   $machine as element(sc:scxml),
@@ -78,80 +82,6 @@ declare function handle-event(
     session:get-instance($session)
   )
 };
-
-
-(:
-TODO Initial elements pose a problem here because they don't allow an "id" attribute, but that's what we're using for
-finding the LCCA and then finding states to exit.
-:)
-declare function find-states-to-exit($source-state, $target-state, $current-states)
-{
-  xdmp:trace($TRACE-EVENT, "Finding states to exit for source state '" || $source-state/@id || "' and target state '" || $target-state/@id || "'"),
-  
-  let $lcca := find-lcca-state(($source-state, $target-state))
-  
-  let $source-parent as element() :=
-    if ($source-state instance of element(sc:initial)) then 
-      $source-state/..
-    else
-      let $source-id := fn:string($source-state/@id) 
-      return $lcca/(sc:state|sc:initial|sc:parallel)[@id = $source-id or .//sc:state/@id = $source-id]
-
-  (:
-  If the source parent is a compound state and we're transitioning from one child state to another, don't
-  exit the parent state.
-  :)
-  let $is-compound-parent-of-both-source-and-target :=
-    $source-parent instance of element(sc:state) and
-    $source-parent//element()[@id = $target-state/@id]
-  
-  where fn:not($is-compound-parent-of-both-source-and-target)
-  
-  return fn:reverse((
-    $source-parent,
-    $source-parent//sc:state[@id = $current-states]
-  ))
-};
-
-
-(:
-If one of the states to enter is a parallel, then we need to grab all the child states of that
-parallel that aren't already being selected.
-:)
-declare function find-states-to-enter($source-state, $target-state)
-{
-  let $lcca := find-lcca-state(($source-state, $target-state))
-  let $target-id := fn:string($target-state/@id)
-  let $target-parent as element() := $lcca/(sc:state|sc:parallel|sc:final)[@id = $target-id or .//sc:state/@id = $target-id]
-  let $target-parent-kids := $target-parent//sc:state[exists(.//sc:state[@id = $target-id])]
-  let $parallel-states := 
-    if ($target-parent instance of element(sc:parallel)) then 
-      $target-parent/sc:state[fn:not(@id = $target-parent-kids/@id/fn:string())]
-    else ()
-    
-  return (
-    $target-parent,
-    $target-parent-kids,
-    $parallel-states,
-    $target-state
-  )
-};
-
-declare function find-lcca-state($states as element()+)
-{
-  let $common-ancestors := $states[1]/ancestor::sc:state/@id/fn:string()
-  
-  let $_ := 
-    for $state in $states[2 to fn:last()]
-    let $these-ancestor-ids := $state/ancestor::sc:state/@id/fn:string()
-    return xdmp:set($common-ancestors, $these-ancestor-ids[. = $common-ancestors])
-  
-  return (
-    $states[1]/ancestor::sc:state[@id = $common-ancestors[fn:last()]],
-    $states[1]/ancestor::sc:scxml
-  )[1]
-};
-
 
 
 (:
@@ -194,6 +124,9 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
 };
 
 
+(:
+For the given state and event, return the first transition that is valid to execute.
+:)
 declare private function select-transition-to-execute(
   $state as element(),
   $event-name as xs:string?,
@@ -230,9 +163,8 @@ declare private function select-transition-to-execute(
 
 
 (:
-TODO A transition can have multiple target states.
+Execute a transition, updating the instance in the session map.
 
-"1) if any <parallel> element is a member of the set, any of its children that are not members of the set must be added "
 "2) if any compound <state> is in the set and none of its children is in the set, its default initial state(s) are added to the set"
 "Any state whose child(ren) are added to the complete target set by clause 2 is called a default entry state"
 :)
@@ -250,8 +182,6 @@ declare private function execute-transition(
   let $_ := xdmp:trace($TRACE-EVENT, "Executing transition with target " || $target || " for instance " || get-instance-id($instance))
   
   let $target-state := $machine//(sc:state|sc:final)[@id = $target]
-  
-  (: TODO Assuming external for now, need to implement internal as well. :)
   
   let $states-to-exit := find-states-to-exit($source-state, $target-state, $current-states)
   let $states-to-enter := find-states-to-enter($source-state, $target-state)
@@ -304,9 +234,96 @@ declare private function execute-transition(
 
 
 (:
-Returns a sequence containing the ID of each state that was entered.
+For the given source and target states, return a sequence of states that should be exited.
 
-So we can say - if the state has transitions with no condition or event, grab the first one and execute it. 
+TODO Initial elements pose a problem here because they don't allow an "id" attribute, but that's what we're using for
+finding the LCCA and then finding states to exit.
+:)
+declare function find-states-to-exit(
+  $source-state as element(), 
+  $target-state as element(), 
+  $current-states as xs:string*
+  ) as element()*
+{
+  xdmp:trace($TRACE-EVENT, "Finding states to exit for source state '" || $source-state/@id || "' and target state '" || $target-state/@id || "'"),
+  
+  let $lcca := find-lcca-state(($source-state, $target-state))
+  
+  let $source-parent as element() :=
+    if ($source-state instance of element(sc:initial)) then 
+      $source-state/..
+    else
+      let $source-id := fn:string($source-state/@id) 
+      return $lcca/(sc:state|sc:initial|sc:parallel)[@id = $source-id or .//sc:state/@id = $source-id]
+
+  (:
+  If the source parent is a compound state and we're transitioning from one child state to another, don't
+  exit the parent state.
+  :)
+  let $is-compound-parent-of-both-source-and-target :=
+    $source-parent instance of element(sc:state) and
+    $source-parent//element()[@id = $target-state/@id]
+  
+  where fn:not($is-compound-parent-of-both-source-and-target)
+  
+  return fn:reverse((
+    $source-parent,
+    $source-parent//sc:state[@id = $current-states]
+  ))
+};
+
+
+(:
+For the given source and target state, return a sequence of states to enter.
+:)
+declare function find-states-to-enter(
+  $source-state as element(), 
+  $target-state as element()
+  ) as element()*
+{
+  let $lcca := find-lcca-state(($source-state, $target-state))
+  let $target-id := fn:string($target-state/@id)
+  let $target-parent as element() := $lcca/(sc:state|sc:parallel|sc:final)[@id = $target-id or .//sc:state/@id = $target-id]
+  let $target-parent-kids := $target-parent//sc:state[exists(.//sc:state[@id = $target-id])]
+  
+  (: If we're entering a parallel, ensure we return all child states :)
+  let $parallel-states := 
+    if ($target-parent instance of element(sc:parallel)) then 
+      $target-parent/sc:state[fn:not(@id = $target-parent-kids/@id/fn:string())]
+    else ()
+    
+  return (
+    $target-parent,
+    $target-parent-kids,
+    $parallel-states,
+    $target-state
+  )
+};
+
+
+(:
+Return the Least Common Compound Ancestor of the given states.
+See http://www.w3.org/TR/scxml/#LCCA
+:)
+declare function find-lcca-state($states as element()+) as element()
+{
+  let $common-ancestors := $states[1]/ancestor::sc:state/@id/fn:string()
+  
+  let $_ := 
+    for $state in $states[2 to fn:last()]
+    let $these-ancestor-ids := $state/ancestor::sc:state/@id/fn:string()
+    return xdmp:set($common-ancestors, $these-ancestor-ids[. = $common-ancestors])
+  
+  return (
+    $states[1]/ancestor::sc:state[@id = $common-ancestors[fn:last()]],
+    $states[1]/ancestor::sc:scxml
+  )[1]
+};
+
+
+(:
+Enter a state, returning a sequence of all states that were actually entered (in the case of a parallel or compound
+state, we'll most likely return multiple states.
 :)
 declare private function enter-state(
   $state as element(), 
@@ -342,6 +359,10 @@ declare private function enter-state(
 };
 
 
+(:
+For each state that was entered, execute a default transition if it exists, updating the instance in the given
+session.
+:)
 declare private function execute-default-transitions(
   $entered-states as element()+,
   $session as map:map
@@ -357,6 +378,9 @@ declare private function execute-default-transitions(
 };
 
 
+(:
+Exit the given state, updating the session as needed.
+:)
 declare private function exit-state(
   $state as element(),
   $session as map:map
@@ -368,6 +392,10 @@ declare private function exit-state(
 };
 
 
+(:
+For each final state, raise a "done" event, and then determine if a parent parallel state has been 
+closed as well, in which case raise a "done" event for it as well.
+:)
 declare private function handle-final-states(
   $entered-states as element()*,
   $session as map:map
@@ -409,6 +437,9 @@ declare private function handle-final-states(
 };
 
 
+(:
+Add a new internal event to the session.
+:)
 declare private function add-internal-event(
   $state as element(),
   $session as map:map
@@ -422,6 +453,9 @@ declare private function add-internal-event(
 };
 
 
+(:
+Execute each of the given executable elements, updating the given session as needed.
+:)
 declare private function execute-executable-content(
   $executable-content-elements as element()*,
   $session as map:map
