@@ -6,7 +6,7 @@
   </datamodel>
   <state id="first">
     <transition event="e1" target="first">
-      <if cond="$ticket[price = 0]">
+      <if cond="exists($ticket[price = 0])">
         <assign location="$ticket/price" expr="'10'" />
         <script>
         <![CDATA[
@@ -15,7 +15,7 @@
           lib:log($session, "setting price to 10")
         ]]>
         </script>
-        <elseif cond="$ticket[price = 10]" />
+        <elseif cond="exists($ticket[price = 10])" />
         <assign location="$ticket/price" expr="'20'" />
         <script>
         <![CDATA[
@@ -24,7 +24,7 @@
           lib:log($session, "setting price to 20")
         ]]>
         </script>
-        <elseif cond="$ticket[price = 20]" />
+        <elseif cond="exists($ticket[price = 20])" />
         <assign location="$ticket/price" expr="'30'" />
         <script>
         <![CDATA[

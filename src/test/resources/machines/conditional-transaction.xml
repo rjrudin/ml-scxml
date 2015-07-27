@@ -29,8 +29,8 @@
   <!-- two transitions with guard conditions; first has priority, but will fail, so second transition should be taken, end 
     in f2 -->
   <state id="e1">
-    <transition target="f1" event="t3" cond="false" />
-    <transition target="f2" event="t3" cond="true" />
+    <transition target="f1" event="t3" cond="false()" />
+    <transition target="f2" event="t3" cond="true()" />
   </state>
 
   <state id="e2" />
@@ -39,9 +39,9 @@
 
   <!-- like above, but with three transitions -->
   <state id="f2">
-    <transition target="g1" event="t4" cond="false" />
-    <transition target="g2" event="t4" cond="false" />
-    <transition target="g3" event="t4" cond="true" />
+    <transition target="g1" event="t4" cond="false()" />
+    <transition target="g2" event="t4" cond="false()" />
+    <transition target="g3" event="t4" cond="true()" />
   </state>
 
   <state id="g1" />
@@ -56,17 +56,17 @@
 
     <!-- this one should pass -->
     <state id="h">
-      <transition target="i" event="t5" cond="true" />
+      <transition target="i" event="t5" cond="true()" />
     </state>
 
     <!-- this one should not pass, and the outer transition should be taken -->
     <state id="i">
-      <transition target="j" event="t5" cond="false" />
+      <transition target="j" event="t5" cond="false()" />
     </state>
 
     <state id="j" />
 
-    <transition target="last" event="t5" cond="true" />
+    <transition target="last" event="t5" cond="true()" />
   </state>
 
   <state id="last" />

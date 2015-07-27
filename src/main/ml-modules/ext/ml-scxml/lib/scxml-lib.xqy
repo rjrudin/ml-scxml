@@ -147,6 +147,7 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
     let $event-name := $event/name/fn:string()
     let $instance := session:get-instance($session)
     let $machine := session:get-machine($session)
+    let $datamodel := get-datamodel($instance)
     
     let $_ := xdmp:trace($TRACE-EVENT, ("Handling event '" || $event-name || "' for instance " || get-instance-id($instance)))
     
@@ -154,11 +155,8 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
     
     return (
       let $executed-transitions := 
-        for $current-state in $current-states 
-        let $transition := (
-          $current-state/sc:transition[@event = $event-name],
-          $current-state/sc:transition[@event = "*"]
-        )[1]
+        for $current-state in $current-states
+        let $transition := select-transition-to-execute($current-state, $event-name, $datamodel)
         where $transition
         return (
           execute-transition($transition, $current-state, $session),
@@ -172,6 +170,41 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
       
       handle-next-event($session)
     )
+};
+
+
+declare private function select-transition-to-execute(
+  $state as element(),
+  $event-name as xs:string?,
+  $datamodel as element(sc:datamodel)?
+  ) as element(sc:transition)?
+{
+  let $transitions := (
+    $state/sc:transition[@event = $event-name],
+    $state/sc:transition[@event = "*"]
+  )
+  
+  let $transition-to-execute := ()
+  
+  let $_ := 
+    for $t in $transitions
+    where fn:not($transition-to-execute)
+    return 
+      let $cond := $t/@cond/fn:string()
+      return
+        if ($cond) then 
+          let $result := evaluate-conditional($t, $datamodel)
+          return 
+            if ($result) then (
+              xdmp:trace($TRACE-EVENT, ("Transition evaluated to true, so executing", $t)),
+              xdmp:set($transition-to-execute, $t)
+            )
+            else
+              xdmp:trace($TRACE-EVENT, ("Transition evaluated to false, so ignoring", $t)) 
+        else
+          xdmp:set($transition-to-execute, $t)
+
+  return $transition-to-execute
 };
 
 
@@ -219,14 +252,11 @@ declare private function execute-transition(
   
   let $_ := handle-final-states($entered-states, $session)
   
-  (: TODO
-  let $_ := execute-default-transitions($entered-states, $session)
-  :)
-  
   let $transitions := mlscxp:build-transition($source-state, $transition, $entered-states, $session)
   
   let $instance := session:get-instance($session)
-  return session:set-instance($session, 
+  
+  let $_ := session:set-instance($session, 
     element {fn:node-name($instance)} {
       $instance/@*,
       
@@ -244,6 +274,11 @@ declare private function execute-transition(
       else ()
     }
   )
+
+  (: Execute default transitions for any states we entered. :)
+  let $_ := execute-default-transitions($entered-states, $session)
+  
+  return ()
 };
 
 
@@ -415,7 +450,7 @@ declare private function execute-if(
 
 declare private function evaluate-conditional(
   $el as element(),
-  $datamodel as element(sc:datamodel)
+  $datamodel as element(sc:datamodel)?
   ) as xs:boolean
 {
   let $cond := $el/@cond/fn:string()
@@ -431,15 +466,18 @@ declare private function evaluate-conditional(
         for $data in $datamodel/sc:data
         let $id := fn:string($data/@id)
         return 'declare variable $' || $id || ' external; ',
-        'fn:exists(' || $cond || ')'
+        $cond
       }
       
       return (
         xdmp:trace($TRACE-EVENT, "Executing xquery for conditional element: " || $xquery),
         xdmp:eval($xquery, $vars)
       )
-    else
-      xdmp:trace($TRACE-EVENT, ("No 'cond' attribute found in element, so ignoring", $el))
+      
+    else (
+      xdmp:trace($TRACE-EVENT, ("No 'cond' attribute found in element, so returning false for it", $el)),
+      fn:false()
+    )
 };
 
 
