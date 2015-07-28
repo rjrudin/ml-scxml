@@ -88,6 +88,9 @@ declare function handle-event(
 Gets the current event, and if one exists, processes it (which means find all the states that have transitions with
 that event, and execute each matching transition, updating the instance document as we go), then remove the current
 event, then call handle-next-event in case one or more events were added.
+
+TODO For logging the transaction, just show the target/event; logging the whole thing could get very verbose for
+transactions with lots of executable content. 
 :)
 declare private function handle-next-event($session as map:map) as empty-sequence()
 {
@@ -97,22 +100,37 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
   
     let $event-name := $event/name/fn:string()
     let $instance := session:get-instance($session)
-    let $machine := session:get-machine($session)
-    let $datamodel := get-datamodel($instance)
-    
-    let $_ := xdmp:trace($TRACE-EVENT, ("Handling event '" || $event-name || "' for instance " || get-instance-id($instance)))
-    
-    let $current-states := $machine//(sc:state|sc:initial|sc:parallel)[@id = get-current-states($instance)]
     
     return (
+      xdmp:trace($TRACE-EVENT, ("Handling event '" || $event-name || "' for instance " || get-instance-id($instance))),
+      
+      let $datamodel := get-datamodel($instance)
+      let $transitioned-state-ids := ()
+      
       let $executed-transitions := 
-        for $current-state in $current-states
-        let $transition := select-transition-to-execute($current-state, $event-name, $datamodel)
-        where $transition
-        return (
-          execute-transition($transition, $current-state, $session),
-          $transition
-        )
+        for $t in find-candidate-transitions($event-name, $session)
+        let $state := $t/..
+        let $state-id := $state/@id/fn:string()
+        let $already-transitioned-from-state := $state-id = $transitioned-state-ids
+        return
+          if ($already-transitioned-from-state) then
+            xdmp:trace($TRACE-EVENT, ("Already executed a transition from state '" || $state-id || "', so ignoring", $t))
+          else 
+            let $already-executed-transition-for-child := $state//(sc:state|sc:parallel)/@id = $transitioned-state-ids
+            return
+              if ($already-executed-transition-for-child) then 
+                xdmp:trace($TRACE-EVENT, ("A transition was already executed for a child state, so ignoring", $t))
+              else
+                let $result := evaluate-transition($t, $datamodel)
+                return
+                  if ($result) then (
+                    xdmp:trace($TRACE-EVENT, ("Transition evaluated to true, so executing", $t)),
+                    execute-transition($t, $state, $session),
+                    xdmp:set($transitioned-state-ids, ($transitioned-state-ids, $state-id)),
+                    $t
+                  )
+                  else
+                    xdmp:trace($TRACE-EVENT, ("Transition evaluated to false, so ignoring", $t))
       
       where fn:not($executed-transitions)
       return xdmp:trace($TRACE-EVENT, ("Discarding event '" || $event-name || "'; could not find transition for it")),
@@ -124,41 +142,36 @@ declare private function handle-next-event($session as map:map) as empty-sequenc
 };
 
 
-(:
-For the given state and event, return the first transition that is valid to execute.
-:)
-declare private function select-transition-to-execute(
-  $state as element(),
-  $event-name as xs:string?,
-  $datamodel as element(sc:datamodel)?
-  ) as element(sc:transition)?
+declare private function find-candidate-transitions(
+  $event-name as xs:string,
+  $session as map:map
+  ) as element(sc:transition)*
 {
-  let $transitions := (
-    $state/sc:transition[@event = $event-name],
-    $state/sc:transition[@event = "*"]
+  let $instance := session:get-instance($session)
+  let $machine := session:get-machine($session)
+  let $current-state-ids := get-current-state-ids($instance)
+  
+  return (
+    $machine//sc:transition[@event = $event-name and ../@id = $current-state-ids],
+    $machine//sc:transition[@event = "*" and ../@id = $current-state-ids] 
   )
-  
-  let $transition-to-execute := ()
-  
-  let $_ := 
-    for $t in $transitions
-    where fn:not($transition-to-execute)
-    return 
-      let $cond := $t/@cond/fn:string()
-      return
-        if ($cond) then 
-          let $result := evaluate-conditional($t, $datamodel)
-          return 
-            if ($result) then (
-              xdmp:trace($TRACE-EVENT, ("Transition evaluated to true, so executing", $t)),
-              xdmp:set($transition-to-execute, $t)
-            )
-            else
-              xdmp:trace($TRACE-EVENT, ("Transition evaluated to false, so ignoring", $t)) 
-        else
-          xdmp:set($transition-to-execute, $t)
+};
 
-  return $transition-to-execute
+  
+(:
+Return true if the transition has no "cond" attribute or if that attribute evaluates to true, false otherwise.
+:)
+declare private function evaluate-transition(
+  $t as element(sc:transition),
+  $datamodel as element(sc:datamodel)?
+  ) as xs:boolean
+{
+  let $cond := $t/@cond/fn:string()
+  return
+    if ($cond) then 
+      evaluate-conditional($t, $datamodel)
+    else
+      fn:true()
 };
 
 
@@ -638,7 +651,7 @@ declare function get-machine-id($instance as element(mlsc:instance)) as xs:strin
 };
 
 
-declare function get-current-states($instance as element(mlsc:instance)) as xs:string*
+declare function get-current-state-ids($instance as element(mlsc:instance)) as xs:string*
 {
   $instance/mlsc:current-states/mlsc:current-state/fn:string()
 };

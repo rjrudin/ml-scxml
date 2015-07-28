@@ -24,6 +24,7 @@ public class ExecuteTransitionWithConditionTest extends AbstractScxmlTest {
 
         fireEvent(id, "t2");
         i = loadInstance(id);
+        i.prettyPrint();
         i.assertCurrentStates("e1");
         assertT2TransitionsExist();
 
@@ -38,6 +39,11 @@ public class ExecuteTransitionWithConditionTest extends AbstractScxmlTest {
         i.assertCurrentStates("g3", "h");
         assertT4TransitionsExist();
 
+        /**
+         * So based on the example, we only want to execute a transition for the child state. That means we need to
+         * order the current states based on children first, then parents. Then, if we execute a transition for a child
+         * state, we don't check for one for the parent state.
+         */
         r = fireEvent(id, "t5");
         assertResponseHasInstanceIdAndState(r, id, "i");
         i = loadInstance(id);
@@ -47,6 +53,8 @@ public class ExecuteTransitionWithConditionTest extends AbstractScxmlTest {
         r = fireEvent(id, "t5");
         i = loadInstance(id);
         i.prettyPrint();
+        assertResponseHasInstanceIdAndState(r, id, "last");
+        i.assertCurrentStates("last");
     }
 
     private void assertInitialTransitionsExist() {
