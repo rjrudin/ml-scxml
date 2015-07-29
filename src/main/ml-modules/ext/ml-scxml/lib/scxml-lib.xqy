@@ -216,7 +216,7 @@ declare private function execute-transition(
   
   let $_ := handle-final-states($entered-states, $session)
   
-  let $transitions := mlscxp:build-transition($source-state, $transition, $entered-states, $session)
+  let $transitions := mlscxp:build-transition($states-to-exit, $transition, $entered-states, $session)
   
   let $instance := session:get-instance($session)
   

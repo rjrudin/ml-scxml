@@ -35,28 +35,28 @@ public class Instance extends Fragment {
     }
 
     /**
-     * This is for transitions that occur when a state machine starts up, where there is no from state yet.
+     * This is for transitions that occur when a state machine starts up, where there is no exit state.
      * 
      * @param position
-     * @param toState
+     * @param enterState
      */
-    public void assertTransitionExists(int position, String toState) {
-        assertTransitionExists(position, null, null, toState);
+    public void assertTransitionExists(int position, String enterState) {
+        assertTransitionExists(position, null, null, enterState);
     }
 
-    public void assertTransitionExists(int position, String event, String fromState, String toState) {
-        if (fromState == null && event == null) {
+    public void assertTransitionExists(int position, String event, String exitState, String enterState) {
+        if (exitState == null && event == null) {
             assertElementExists(format(
-                    "/mlsc:instance/mlsc:transitions/mlsc:transition[%d][not(mlsc:from) and mlsc:to/@state = '%s' and @date-time != '']",
-                    position, toState));
+                    "/mlsc:instance/mlsc:transitions/mlsc:transition[%d][not(mlsc:exit) and not(@event) and mlsc:enter/@state = '%s' and @transition-dateTime != '']",
+                    position, enterState));
         } else if (event == null) {
             assertElementExists(format(
-                    "/mlsc:instance/mlsc:transitions/mlsc:transition[%d][not(@event) and @date-time != '' and mlsc:from/@state = '%s' and mlsc:to/@state = '%s']",
-                    position, fromState, toState));
+                    "/mlsc:instance/mlsc:transitions/mlsc:transition[%d][not(@event) and @transition-dateTime != '' and mlsc:exit/@state = '%s' and mlsc:enter/@state = '%s']",
+                    position, exitState, enterState));
         } else {
             assertElementExists(format(
-                    "/mlsc:instance/mlsc:transitions/mlsc:transition[%d][@event = '%s' and @date-time != '' and mlsc:from/@state = '%s' and mlsc:to/@state = '%s']",
-                    position, event, fromState, toState));
+                    "/mlsc:instance/mlsc:transitions/mlsc:transition[%d][@event = '%s' and @transition-dateTime != '' and mlsc:exit/@state = '%s' and mlsc:enter/@state = '%s']",
+                    position, event, exitState, enterState));
         }
     }
 

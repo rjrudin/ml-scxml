@@ -24,7 +24,6 @@ public class ExecuteTransitionWithConditionTest extends AbstractScxmlTest {
 
         fireEvent(id, "t2");
         i = loadInstance(id);
-        i.prettyPrint();
         i.assertCurrentStates("e1");
         assertT2TransitionsExist();
 
@@ -39,11 +38,6 @@ public class ExecuteTransitionWithConditionTest extends AbstractScxmlTest {
         i.assertCurrentStates("g3", "h");
         assertT4TransitionsExist();
 
-        /**
-         * So based on the example, we only want to execute a transition for the child state. That means we need to
-         * order the current states based on children first, then parents. Then, if we execute a transition for a child
-         * state, we don't check for one for the parent state.
-         */
         r = fireEvent(id, "t5");
         assertResponseHasInstanceIdAndState(r, id, "i");
         i = loadInstance(id);
@@ -51,10 +45,11 @@ public class ExecuteTransitionWithConditionTest extends AbstractScxmlTest {
         assertT5TransitionsExist();
 
         r = fireEvent(id, "t5");
-        i = loadInstance(id);
-        i.prettyPrint();
         assertResponseHasInstanceIdAndState(r, id, "last");
+        i = loadInstance(id);
         i.assertCurrentStates("last");
+        assertSecondT5TransitionExists();
+        i.prettyPrint();
     }
 
     private void assertInitialTransitionsExist() {
@@ -81,16 +76,21 @@ public class ExecuteTransitionWithConditionTest extends AbstractScxmlTest {
     private void assertT4TransitionsExist() {
         assertT3TransitionsExist();
         i.assertTransitionExists(7, "t4", "f2", "g3");
-        /*
-         * TODO Not sure what to do when there's a state with an initial child, which doesn't have an ID. Perhaps use
-         * e.g. "g3-initial"?
+        /**
+         * This transition starts from an initial element that cannot have an ID. So our transition element only
+         * captures the enter state.
          */
-        i.assertTransitionExists(7, "t4", "f2", "");
-        i.assertTransitionExists(8, null, "", "h");
+        i.assertTransitionExists(8, "h");
     }
 
     private void assertT5TransitionsExist() {
         assertT4TransitionsExist();
         i.assertTransitionExists(9, "t5", "h", "i");
+    }
+
+    private void assertSecondT5TransitionExists() {
+        assertT5TransitionsExist();
+        i.assertTransitionExists(10, "t5", "g3", "last");
+        i.assertTransitionExists(10, "t5", "i", "last");
     }
 }

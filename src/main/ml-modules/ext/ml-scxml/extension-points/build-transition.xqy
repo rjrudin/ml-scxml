@@ -1,11 +1,5 @@
 xquery version "1.0-ml";
 
-(:
-Extension point for building a transition that is then persisted on the instance document as a record of that 
-transition occurring. I don't anticipate that ml-scxml will have dependencies on the data that is recorded here - this
-is really for auditing/analytics.
-:)
-
 module namespace mlscxp = "http://marklogic.com/scxml/extension-points";
 
 declare namespace mlsc = "http://marklogic.com/scxml";
@@ -13,27 +7,34 @@ declare namespace sc = "http://www.w3.org/2005/07/scxml";
 
 
 (:
-$source-state and $transition will be empty in case the instance just started up.
+Extension point for building a transition element. Can be overridden to include other items of interest.
+
+ml-scxml doesn't depend on the transition elements at all, they're just there for history purposes.
+
+Note that $exited states and $transition will be empty for a transaction that's executed when an instance starts up.
 :)
 declare function build-transition(
-  $source-state as element()?,
+  $exited-states as element()*,
   $transition as element(sc:transition)?,
   $entered-states as element()+,
-  $session as map:map
+  $session as map:map  
   ) as element(mlsc:transition)
 {
-  <mlsc:transition date-time="{fn:current-dateTime()}">
-    {
+  element mlsc:transition {
+    attribute transition-dateTime {fn:current-dateTime()},
+    
     let $event := $transition/@event/fn:string()
     where $event
     return attribute event {$event},
     
-    if ($source-state) then 
-      <mlsc:from state="{fn:string($source-state/@id)}"/>
-    else (),
+    for $state in $exited-states
+    let $id := $state/@id/fn:string()
+    where $id
+    return <mlsc:exit state="{$id}"/>,
     
     for $state in $entered-states
-    return <mlsc:to state="{fn:string($state/@id)}"/> 
-    }
-  </mlsc:transition>
+    let $id := $state/@id/fn:string()
+    where $id
+    return <mlsc:enter state="{$id}"/>
+  }
 };

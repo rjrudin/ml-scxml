@@ -63,6 +63,6 @@ public class ParallelSampleFromSpecTest extends AbstractScxmlTest {
         i.assertTestMessageExists(5, "leaving p");
         i.assertTestMessageExists(6, "transitioning to finalState");
         i.assertTestMessageExists(7, "entering finalState");
-        // instance.prettyPrint();
+        i.prettyPrint();
     }
 }
