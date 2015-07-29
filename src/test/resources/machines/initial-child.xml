@@ -9,7 +9,19 @@
         ]]>
       </script>
     </onentry>
-    <initial id="S1">
+    <initial>
+      <onentry>
+        <script>
+        <![CDATA[
+          import module namespace lib = "urn:testapp" at "/ext/test-app/lib/script-lib.xqy";
+          declare variable $session external;
+          lib:log($session, "entering initial state")
+        ]]>
+        </script>
+      </onentry>
+      <transition target="S1"/>
+    </initial>
+    <state id="S1">
       <onentry>
         <script>
         <![CDATA[
@@ -19,6 +31,6 @@
         ]]>
         </script>
       </onentry>
-    </initial>
+    </state>
   </state>
 </scxml>
