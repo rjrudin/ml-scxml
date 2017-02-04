@@ -4,3 +4,6 @@
 /.project
 /bin/
 /build/
+.idea
+out
+

@@ -1,29 +1,15 @@
-buildscript {
-  repositories {
-    mavenCentral()
-    maven {url "http://developer.marklogic.com/maven2/"}
-    maven {url "http://rjrudin.github.io/marklogic-java/releases"}
-  }
-  
-  dependencies {
-    classpath "com.marklogic:ml-gradle:2.0a12b"
-  }
+plugins {
+	id "java"
+	id "com.marklogic.ml-gradle" version "2.5.0"
 }
 
-apply plugin: 'ml-gradle'
-apply plugin: 'java'
-apply plugin: 'eclipse'
-
 repositories {
-  mavenCentral()
-  maven {url "http://developer.marklogic.com/maven2/"}
-  maven {url "http://rjrudin.github.io/marklogic-java/releases"}
+	jcenter()
 }
 
 dependencies {
-  compile "com.marklogic:ml-javaclient-util:2.0.8"
-  testCompile "com.marklogic:ml-junit:2.0.3"
-  testCompile 'com.jayway.restassured:rest-assured:2.3.1'
+	testCompile "com.marklogic:ml-junit:2.6.0"
+	testCompile "com.jayway.restassured:rest-assured:2.4.1"
 }
 
 sourceSets.test.resources.srcDir 'src/test/java'
