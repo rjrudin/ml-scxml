@@ -34,4 +34,4 @@ More to come on this soon, but here are the basics:
 2. To create a new instance of a state machine, make a POST to /v1/resources/scxml?rs:machineId=(name of your machine), where "name of your machine" matches your machine module filename minus the ".xml"
 3. To fire an event into an existing instance, make a POST to /v1/resource/scxml?rs:instanceId=(the instance ID)&rs:event=(the event name).
 
-For examples, see https://github.com/rjrudin/ml-scxml/tree/master/src/test/ml-modules/ext/ml-scxml/machines. The only other docs are right now are all the [JUnit test cases](https://github.com/rjrudin/ml-scxml/tree/master/src/test/java/com/marklogic/scxml).
+For examples, see https://github.com/rjrudin/ml-scxml/tree/master/src/test/resources/machines. The only other docs are right now are all the [JUnit test cases](https://github.com/rjrudin/ml-scxml/tree/master/src/test/java/com/marklogic/scxml).
